@@ -44,49 +44,54 @@ def print_banner():
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
 ║         🤖 MASUD AI - PREMIUM PREDICTION BOT                ║
-║         🚀 VERSION 3.0 - NO LIBRARY NEEDED                  ║
+║         🚀 VERSION 3.0 - FIXED SIGNAL ISSUE                 ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
     print(banner)
-    logger.info("=" * 60)
-    logger.info("  🅼🅰🆂🆄🅳 🅰🅸 - 🅿🆁🅴🅼🅸🆄🅼 🅱🅾🆃")
-    logger.info("=" * 60)
 
 # ============================================================
-# টেলিগ্রাম API ফাংশন (সরাসরি HTTP)
+# টেলিগ্রাম API ফাংশন
 # ============================================================
 async def send_telegram_message(message):
-    """সরাসরি Telegram API ব্যবহার করে মেসেজ পাঠায়"""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    
     payload = {
         "chat_id": CHAT_ID,
         "text": message,
         "parse_mode": "Markdown"
     }
-    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=10) as response:
                 if response.status == 200:
                     logger.info("✅ Message sent successfully")
                     return True
-                else:
-                    text = await response.text()
-                    logger.error(f"❌ Failed to send: {response.status} - {text}")
-                    return False
+                return False
     except Exception as e:
-        logger.error(f"❌ Error sending message: {e}")
+        logger.error(f"Error sending message: {e}")
+        return False
+
+async def send_telegram_keyboard(message, keyboard):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    reply_markup = {"inline_keyboard": keyboard}
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown",
+        "reply_markup": json.dumps(reply_markup)
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=10) as response:
+                return response.status == 200
+    except:
         return False
 
 async def get_updates(offset=None):
-    """Telegram থেকে আপডেট নেয়"""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
     params = {"timeout": 30}
     if offset:
         params["offset"] = offset
-    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, timeout=35) as response:
@@ -94,45 +99,16 @@ async def get_updates(offset=None):
                     data = await response.json()
                     return data.get("result", [])
                 return []
-    except Exception as e:
-        logger.error(f"Error getting updates: {e}")
+    except:
         return []
 
-async def send_telegram_keyboard(message, keyboard):
-    """কীবোর্ড সহ মেসেজ পাঠায়"""
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    
-    reply_markup = {
-        "inline_keyboard": keyboard
-    }
-    
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown",
-        "reply_markup": json.dumps(reply_markup)
-    }
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, timeout=10) as response:
-                if response.status == 200:
-                    logger.info("✅ Keyboard message sent")
-                    return True
-                return False
-    except Exception as e:
-        logger.error(f"Error sending keyboard: {e}")
-        return False
-
 async def answer_callback(callback_id, text):
-    """Callback query এর উত্তর দেয়"""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
     payload = {
         "callback_query_id": callback_id,
         "text": text,
         "show_alert": False
     }
-    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=10) as response:
@@ -141,7 +117,6 @@ async def answer_callback(callback_id, text):
         return False
 
 async def edit_message_text(chat_id, message_id, text, keyboard=None):
-    """মেসেজ এডিট করে"""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
     payload = {
         "chat_id": chat_id,
@@ -149,11 +124,9 @@ async def edit_message_text(chat_id, message_id, text, keyboard=None):
         "text": text,
         "parse_mode": "Markdown"
     }
-    
     if keyboard:
         reply_markup = {"inline_keyboard": keyboard}
         payload["reply_markup"] = json.dumps(reply_markup)
-    
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=10) as response:
@@ -174,9 +147,10 @@ last_signal = None
 last_period = None
 engine = None
 offset = None
+signal_count = 0
 
 # ============================================================
-# প্রেডিকশন ইঞ্জিন
+# প্রেডিকশন ইঞ্জিন - আপনার HTML ফাইলের মতো
 # ============================================================
 class PredictionEngine:
     def __init__(self):
@@ -189,18 +163,29 @@ class PredictionEngine:
         self.total_trade = 0
         self.accuracy = 0
         self.last_10_numbers = []
+        self.big_count = 0
+        self.small_count = 0
+        self.consecutive_big = 0
+        self.consecutive_small = 0
 
+    # ============================================================
+    # আপনার HTML ফাইলের অ্যালগরিদম - হুবহু অনুকরণ
+    # ============================================================
     def analyze_trend(self, numbers):
+        """আপনার ফাইলের analyzeTrend ফাংশনের মতো"""
         if not numbers or len(numbers) < 3:
             return {'trend': 'neutral', 'confidence': 50}
         
+        # BIG/SMALL কাউন্ট
         bigs = sum(1 for n in numbers if n >= 5)
         smalls = len(numbers) - bigs
         
+        # কনসিকিউটিভ প্যাটার্ন চেক
         last_three = numbers[-3:] if len(numbers) >= 3 else numbers
         all_big = all(n >= 5 for n in last_three)
         all_small = all(n < 5 for n in last_three)
         
+        # অল্টারনেটিং প্যাটার্ন
         alternating = True
         if len(last_three) >= 3:
             for i in range(1, len(last_three)):
@@ -208,9 +193,11 @@ class PredictionEngine:
                     alternating = False
                     break
         
+        # কনফিডেন্স ক্যালকুলেশন
         big_ratio = bigs / len(numbers) if len(numbers) > 0 else 0
         confidence = min(95, round((abs(big_ratio - 0.5) * 2) * 100))
         
+        # ট্রেন্ড ডিটেকশন - আপনার ফাইলের মতো
         trend = 'neutral'
         if big_ratio > 0.6:
             trend = 'BIG'
@@ -223,6 +210,7 @@ class PredictionEngine:
             trend = 'SMALL'
             confidence = min(95, confidence + 10)
         elif alternating and len(last_three) >= 3:
+            # অল্টারনেটিং হলে আগের ট্রেন্ড অনুসরণ
             last = last_three[-1]
             trend = 'SMALL' if last >= 5 else 'BIG'
             confidence = min(90, confidence + 10)
@@ -230,6 +218,7 @@ class PredictionEngine:
         return {'trend': trend, 'confidence': max(55, confidence)}
 
     def predict_next(self, numbers):
+        """আপনার ফাইলের predictNextNumber ফাংশনের মতো"""
         if not numbers:
             num = random.randint(0, 9)
             return {
@@ -238,9 +227,11 @@ class PredictionEngine:
                 'confidence': 60
             }
         
+        # ট্রেন্ড অ্যানালাইসিস
         analysis = self.analyze_trend(numbers)
         confidence = analysis['confidence']
         
+        # স্মার্ট প্রেডিক্ট - আপনার ফাইলের মতো
         if analysis['trend'] == 'BIG':
             predicted_num = random.randint(5, 9)
             confidence = min(95, confidence + 5)
@@ -248,6 +239,7 @@ class PredictionEngine:
             predicted_num = random.randint(0, 4)
             confidence = min(95, confidence + 5)
         else:
+            # নিউট্রাল - ডিস্ট্রিবিউশন অনুযায়ী
             avg = sum(numbers) / len(numbers) if numbers else 0
             if avg > 4.5:
                 predicted_num = random.randint(4, 9)
@@ -256,6 +248,7 @@ class PredictionEngine:
                 predicted_num = random.randint(0, 5)
                 confidence = 65
         
+        # ৫% চান্স রিভার্স - আপনার ফাইলের মতো
         if random.random() < 0.05 and len(numbers) > 5:
             predicted_num = random.randint(0, 4) if predicted_num >= 5 else random.randint(5, 9)
             confidence = max(50, confidence - 10)
@@ -267,6 +260,7 @@ class PredictionEngine:
         }
 
     async def fetch_data(self):
+        """API থেকে ডাটা সংগ্রহ - আপনার ফাইলের মতো"""
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -274,10 +268,14 @@ class PredictionEngine:
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(API_URL, headers=headers, timeout=15) as response:
+                    logger.info(f"📡 API Response Status: {response.status}")
+                    
                     if response.status == 200:
                         try:
                             data = await response.json()
-                        except:
+                            logger.info(f"📊 API Data: {json.dumps(data, indent=2)[:500]}")
+                        except Exception as e:
+                            logger.error(f"JSON parse error: {e}")
                             return None
                             
                         if data and data.get('data') and data['data'].get('list'):
@@ -290,17 +288,37 @@ class PredictionEngine:
                                     except:
                                         pass
                             
+                            logger.info(f"📊 Numbers from API: {numbers[:10]}")
+                            
                             if numbers:
                                 latest_issue = items[0].get('issueNumber', '')
+                                logger.info(f"📌 Latest Issue: {latest_issue}")
+                                logger.info(f"📌 Last Issue: {self.last_issue}")
+                                
                                 if latest_issue != self.last_issue:
                                     self.last_issue = latest_issue
                                     self.history = numbers[:30]
                                     self.last_10_numbers = numbers[:10]
                                     
-                                    prediction = self.predict_next(self.history)
+                                    # BIG/SMALL কাউন্ট আপডেট
+                                    self.big_count = sum(1 for n in self.last_10_numbers if n >= 5)
+                                    self.small_count = len(self.last_10_numbers) - self.big_count
                                     
-                                    big_count = sum(1 for n in self.last_10_numbers if n >= 5)
-                                    small_count = len(self.last_10_numbers) - big_count
+                                    # কনসিকিউটিভ চেক
+                                    self.consecutive_big = 0
+                                    self.consecutive_small = 0
+                                    for n in reversed(self.last_10_numbers):
+                                        if n >= 5:
+                                            if self.consecutive_small > 0:
+                                                break
+                                            self.consecutive_big += 1
+                                        else:
+                                            if self.consecutive_big > 0:
+                                                break
+                                            self.consecutive_small += 1
+                                    
+                                    # প্রেডিক্ট করুন
+                                    prediction = self.predict_next(self.history)
                                     
                                     self.current_prediction = {
                                         'period': latest_issue,
@@ -308,11 +326,19 @@ class PredictionEngine:
                                         'number': prediction['number'],
                                         'confidence': prediction['confidence'],
                                         'timestamp': datetime.now().strftime('%H:%M:%S'),
-                                        'big_count': big_count,
-                                        'small_count': small_count,
+                                        'big_count': self.big_count,
+                                        'small_count': self.small_count,
+                                        'consecutive_big': self.consecutive_big,
+                                        'consecutive_small': self.consecutive_small,
                                         'history': self.last_10_numbers[:10]
                                     }
+                                    
+                                    logger.info(f"🎯 NEW PREDICTION: {self.current_prediction}")
                                     return self.current_prediction
+                                else:
+                                    logger.info("⏳ No new issue, waiting...")
+                    else:
+                        logger.warning(f"API status: {response.status}")
                     return None
         except Exception as e:
             logger.error(f"API Error: {e}")
@@ -361,15 +387,21 @@ def get_start_keyboard():
 # সিগন্যাল ফাংশন
 # ============================================================
 async def send_signal(prediction):
+    """আপনার HTML ফাইলের মতো স্টাইলে সিগন্যাল পাঠায়"""
+    global engine, signal_count
+    
     if not prediction or not engine:
+        logger.error("❌ Cannot send signal: prediction or engine is None")
         return
     
+    signal_count += 1
     engine.total_trade += 1
     
     bar = get_confidence_bar(prediction['confidence'])
     dots = get_history_dots(prediction.get('history', []))
     bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴"
     
+    # আপনার HTML ফাইলের মতো স্টাইল
     msg = f"""
 🎯 *MASUD AI - রিয়েল প্রেডিক্ট*
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -382,6 +414,8 @@ async def send_signal(prediction):
 📈 *ট্রেন্ড অ্যানালাইসিস:*
 • লাস্ট ১০: {dots}
 • BIG: {prediction.get('big_count', 0)} | SMALL: {prediction.get('small_count', 0)}
+• কনসিকিউটিভ BIG: {prediction.get('consecutive_big', 0)}
+• কনসিকিউটিভ SMALL: {prediction.get('consecutive_small', 0)}
 
 📊 *পরিসংখ্যান:*
 🏆 উইন: {engine.win_count} | 💔 লস: {engine.loss_count}
@@ -392,8 +426,9 @@ async def send_signal(prediction):
 🅿🅾🆆🅴🆁🅴🅳 🅱🆈 🅼🅰🆂🆄🅳 🅰🅸
     """
     
+    logger.info(f"📤 SENDING SIGNAL #{signal_count}: {prediction['prediction']}")
     await send_telegram_message(msg)
-    logger.info(f"✅ Signal sent: {prediction['prediction']}")
+    logger.info(f"✅ Signal #{signal_count} sent successfully")
 
 async def check_result(prediction, actual_number):
     global engine
@@ -445,34 +480,49 @@ async def check_result(prediction, actual_number):
     await send_telegram_message(msg)
 
 # ============================================================
-# সিগন্যাল লুপ
+# সিগন্যাল লুপ - ফিক্সড
 # ============================================================
 async def signal_loop():
-    global is_running, last_signal, last_period, engine
+    global is_running, last_signal, last_period, engine, signal_count
     
-    logger.info("🔄 Signal loop started")
+    logger.info("🔄 Signal loop started - waiting for signals...")
     
     while is_running:
         try:
             if engine:
+                logger.info("🔍 Fetching data from API...")
                 prediction = await engine.fetch_data()
                 
-                if prediction and prediction['period'] != last_period:
-                    if last_period and last_signal:
-                        if engine.history:
-                            real_num = engine.history[0] if engine.history else None
-                            if real_num is not None:
-                                await check_result(last_signal, real_num)
+                if prediction:
+                    logger.info(f"📊 Got prediction: {prediction}")
                     
-                    last_period = prediction['period']
-                    last_signal = prediction
-                    await send_signal(prediction)
-                    logger.info(f"📡 New signal: {prediction['prediction']}")
+                    if prediction['period'] != last_period:
+                        logger.info(f"🆕 New period detected: {prediction['period']}")
+                        
+                        # আগের ট্রেডের রেজাল্ট চেক
+                        if last_period and last_signal:
+                            if engine.history:
+                                real_num = engine.history[0] if engine.history else None
+                                if real_num is not None:
+                                    logger.info(f"📊 Checking result for period {last_period}")
+                                    await check_result(last_signal, real_num)
+                        
+                        # নতুন সিগন্যাল
+                        last_period = prediction['period']
+                        last_signal = prediction
+                        
+                        # সিগন্যাল পাঠান
+                        logger.info(f"📤 Sending signal for period {prediction['period']}")
+                        await send_signal(prediction)
+                    else:
+                        logger.info(f"⏳ Same period {prediction['period']}, waiting...")
+                else:
+                    logger.info("⏳ No prediction available, waiting...")
             
             await asyncio.sleep(30)
             
         except Exception as e:
-            logger.error(f"Loop error: {e}")
+            logger.error(f"❌ Loop error: {e}")
             await asyncio.sleep(30)
 
 # ============================================================
@@ -484,7 +534,6 @@ async def handle_message(message):
     text = message.get('text', '')
     chat_id = message['chat']['id']
     
-    # শুধু আমাদের CHAT_ID এর মেসেজ প্রসেস করি
     if str(chat_id) != str(CHAT_ID):
         return
     
@@ -644,17 +693,14 @@ async def main_loop():
     
     while True:
         try:
-            # আপডেট নেওয়া
             updates = await get_updates(offset)
             
             for update in updates:
                 offset = update['update_id'] + 1
                 
-                # মেসেজ প্রসেস
                 if 'message' in update:
                     await handle_message(update['message'])
                 
-                # Callback প্রসেস
                 if 'callback_query' in update:
                     await handle_callback(update['callback_query'])
             
@@ -674,10 +720,15 @@ async def start_bot():
     logger.info("🤖 Starting Masud AI Bot...")
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
     logger.info(f"📢 Chat ID: {CHAT_ID}")
+    logger.info("=" * 60)
     
     # ইঞ্জিন তৈরি
     engine = PredictionEngine()
+    
+    # প্রথম ডাটা ফেচ
+    logger.info("📡 Fetching initial data...")
     await engine.fetch_data()
+    logger.info("✅ Initial data fetched")
     
     # সিগন্যাল অটো স্টার্ট
     is_running = True
