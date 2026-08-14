@@ -6,15 +6,6 @@ import random
 import logging
 from datetime import datetime
 
-# Telegram imports - সরাসরি import
-try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-    from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-except ImportError as e:
-    print(f"❌ Telegram import error: {e}")
-    print("📌 Please install: pip install python-telegram-bot==20.3")
-    raise
-
 # ============================================================
 # লগিং সেটআপ
 # ============================================================
@@ -53,7 +44,7 @@ def print_banner():
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
 ║         🤖 MASUD AI - PREMIUM PREDICTION BOT                ║
-║         🚀 VERSION 2.0 - READY FOR ACTION                   ║
+║         🚀 VERSION 3.0 - NO LIBRARY NEEDED                  ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
@@ -61,6 +52,114 @@ def print_banner():
     logger.info("=" * 60)
     logger.info("  🅼🅰🆂🆄🅳 🅰🅸 - 🅿🆁🅴🅼🅸🆄🅼 🅱🅾🆃")
     logger.info("=" * 60)
+
+# ============================================================
+# টেলিগ্রাম API ফাংশন (সরাসরি HTTP)
+# ============================================================
+async def send_telegram_message(message):
+    """সরাসরি Telegram API ব্যবহার করে মেসেজ পাঠায়"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=10) as response:
+                if response.status == 200:
+                    logger.info("✅ Message sent successfully")
+                    return True
+                else:
+                    text = await response.text()
+                    logger.error(f"❌ Failed to send: {response.status} - {text}")
+                    return False
+    except Exception as e:
+        logger.error(f"❌ Error sending message: {e}")
+        return False
+
+async def get_updates(offset=None):
+    """Telegram থেকে আপডেট নেয়"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
+    params = {"timeout": 30}
+    if offset:
+        params["offset"] = offset
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, timeout=35) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("result", [])
+                return []
+    except Exception as e:
+        logger.error(f"Error getting updates: {e}")
+        return []
+
+async def send_telegram_keyboard(message, keyboard):
+    """কীবোর্ড সহ মেসেজ পাঠায়"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    
+    reply_markup = {
+        "inline_keyboard": keyboard
+    }
+    
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown",
+        "reply_markup": json.dumps(reply_markup)
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=10) as response:
+                if response.status == 200:
+                    logger.info("✅ Keyboard message sent")
+                    return True
+                return False
+    except Exception as e:
+        logger.error(f"Error sending keyboard: {e}")
+        return False
+
+async def answer_callback(callback_id, text):
+    """Callback query এর উত্তর দেয়"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
+    payload = {
+        "callback_query_id": callback_id,
+        "text": text,
+        "show_alert": False
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=10) as response:
+                return response.status == 200
+    except:
+        return False
+
+async def edit_message_text(chat_id, message_id, text, keyboard=None):
+    """মেসেজ এডিট করে"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    
+    if keyboard:
+        reply_markup = {"inline_keyboard": keyboard}
+        payload["reply_markup"] = json.dumps(reply_markup)
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=10) as response:
+                return response.status == 200
+    except:
+        return False
 
 # ============================================================
 # কনফিগারেশন
@@ -74,6 +173,7 @@ is_running = False
 last_signal = None
 last_period = None
 engine = None
+offset = None
 
 # ============================================================
 # প্রেডিকশন ইঞ্জিন
@@ -170,17 +270,14 @@ class PredictionEngine:
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive'
+                'Accept': 'application/json'
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(API_URL, headers=headers, timeout=15) as response:
                     if response.status == 200:
                         try:
                             data = await response.json()
-                        except Exception as e:
-                            logger.warning(f"JSON parse error: {e}")
+                        except:
                             return None
                             
                         if data and data.get('data') and data['data'].get('list'):
@@ -216,12 +313,7 @@ class PredictionEngine:
                                         'history': self.last_10_numbers[:10]
                                     }
                                     return self.current_prediction
-                    else:
-                        logger.warning(f"API status: {response.status}")
                     return None
-        except asyncio.TimeoutError:
-            logger.warning("API timeout")
-            return None
         except Exception as e:
             logger.error(f"API Error: {e}")
             return None
@@ -253,102 +345,22 @@ def get_last_trades():
         lines.append(f"{icon} {t['prediction']} → {t['actual']} ({t['number']})")
     return "\n".join(lines)
 
-# ============================================================
-# বট হ্যান্ডলার
-# ============================================================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🚀 সিগন্যাল চালু", callback_data="start_signal")],
-        [InlineKeyboardButton("⏹️ সিগন্যাল বন্ধ", callback_data="stop_signal")],
-        [InlineKeyboardButton("📊 পরিসংখ্যান", callback_data="stats")],
-        [InlineKeyboardButton("📡 লাইভ সিগন্যাল", callback_data="live")]
+def get_start_keyboard():
+    return [
+        [
+            {"text": "🚀 সিগন্যাল চালু", "callback_data": "start_signal"},
+            {"text": "⏹️ সিগন্যাল বন্ধ", "callback_data": "stop_signal"}
+        ],
+        [
+            {"text": "📊 পরিসংখ্যান", "callback_data": "stats"},
+            {"text": "📡 লাইভ সিগন্যাল", "callback_data": "live"}
+        ]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
-    
-    msg = f"""
-🤖 *MASUD AI - রিয়েল প্রেডিক্টর*
-━━━━━━━━━━━━━━━━━━━━━━
 
-📊 *স্ট্যাটাস:* {status}
-🏆 *উইন:* {engine.win_count if engine else 0}
-💔 *লস:* {engine.loss_count if engine else 0}
-📈 *ট্রেড:* {engine.total_trade if engine else 0}
-🎯 *একুরেসি:* {engine.accuracy if engine else 0}%
-
-📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers) if engine else '---'}
-
-💡 নিচের বাটন ব্যবহার করুন
-    """
-    await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode='Markdown')
-
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global is_running
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "start_signal":
-        if not is_running:
-            is_running = True
-            asyncio.create_task(signal_loop(context.bot))
-            await query.edit_message_text("✅ সিগন্যাল চালু হয়েছে! প্রতি ৩০ সেকেন্ডে আপডেট আসবে।")
-        else:
-            await query.edit_message_text("⚠️ সিগন্যাল ইতিমধ্যে চালু আছে!")
-    
-    elif query.data == "stop_signal":
-        is_running = False
-        await query.edit_message_text("🔴 সিগন্যাল বন্ধ করা হয়েছে।")
-    
-    elif query.data == "stats":
-        if not engine:
-            await query.edit_message_text("⏳ ইঞ্জিন প্রস্তুত হচ্ছে...")
-            return
-        
-        stats = f"""
-📊 *পরিসংখ্যান*
-━━━━━━━━━━━━━━━━━━━
-
-• মোট ট্রেড: {engine.total_trade}
-• 🏆 উইন: {engine.win_count}
-• 💔 লস: {engine.loss_count}
-• 🎯 একুরেসি: {engine.accuracy}%
-• 📡 স্ট্যাটাস: {'🟢 চলমান' if is_running else '🔴 বন্ধ'}
-
-📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers)}
-
-📈 *লাস্ট ৫ ট্রেড:*
-{get_last_trades()}
-        """
-        await query.edit_message_text(stats, parse_mode='Markdown')
-    
-    elif query.data == "live":
-        if engine and engine.current_prediction:
-            p = engine.current_prediction
-            bar = get_confidence_bar(p['confidence'])
-            dots = get_history_dots(p.get('history', []))
-            
-            signal = f"""
-📡 *লাইভ সিগন্যাল*
-━━━━━━━━━━━━━━━━━━━
-
-🔢 পিরিয়ড: `{p['period'][-6:]}`
-🎯 সিগন্যাল: {'🟢' if p['prediction'] == 'BIG' else '🔴'} *{p['prediction']}*
-🔢 নম্বর: `{p['number']}`
-📊 কনফিডেন্স: {p['confidence']}% {bar}
-
-📈 *ট্রেন্ড অ্যানালাইসিস:*
-• লাস্ট ১০: {dots}
-• BIG: {p.get('big_count', 0)} | SMALL: {p.get('small_count', 0)}
-
-⏱️ সময়: {p['timestamp']}
-━━━━━━━━━━━━━━━━━━━
-            """
-            await query.edit_message_text(signal, parse_mode='Markdown')
-        else:
-            await query.edit_message_text("⏳ কোনো সিগন্যাল নেই, অপেক্ষা করুন...")
-
-async def send_signal(bot, prediction):
+# ============================================================
+# সিগন্যাল ফাংশন
+# ============================================================
+async def send_signal(prediction):
     if not prediction or not engine:
         return
     
@@ -380,13 +392,10 @@ async def send_signal(bot, prediction):
 🅿🅾🆆🅴🆁🅴🅳 🅱🆈 🅼🅰🆂🆄🅳 🅰🅸
     """
     
-    try:
-        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode='Markdown')
-        logger.info(f"✅ Signal sent: {prediction['prediction']}")
-    except Exception as e:
-        logger.error(f"❌ Failed to send: {e}")
+    await send_telegram_message(msg)
+    logger.info(f"✅ Signal sent: {prediction['prediction']}")
 
-async def check_result(bot, prediction, actual_number):
+async def check_result(prediction, actual_number):
     global engine
     
     if not prediction or actual_number is None or not engine:
@@ -433,12 +442,12 @@ async def check_result(bot, prediction, actual_number):
 ━━━━━━━━━━━━━━━━━━━
     """
     
-    try:
-        await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode='Markdown')
-    except Exception as e:
-        logger.error(f"Result update failed: {e}")
+    await send_telegram_message(msg)
 
-async def signal_loop(bot):
+# ============================================================
+# সিগন্যাল লুপ
+# ============================================================
+async def signal_loop():
     global is_running, last_signal, last_period, engine
     
     logger.info("🔄 Signal loop started")
@@ -453,11 +462,11 @@ async def signal_loop(bot):
                         if engine.history:
                             real_num = engine.history[0] if engine.history else None
                             if real_num is not None:
-                                await check_result(bot, last_signal, real_num)
+                                await check_result(last_signal, real_num)
                     
                     last_period = prediction['period']
                     last_signal = prediction
-                    await send_signal(bot, prediction)
+                    await send_signal(prediction)
                     logger.info(f"📡 New signal: {prediction['prediction']}")
             
             await asyncio.sleep(30)
@@ -466,22 +475,53 @@ async def signal_loop(bot):
             logger.error(f"Loop error: {e}")
             await asyncio.sleep(30)
 
-async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if engine:
-        prediction = await engine.fetch_data()
-        if prediction:
-            await send_signal(context.bot, prediction)
-        else:
-            await update.message.reply_text("⏳ সিগন্যাল তৈরি হচ্ছে...")
-    else:
-        await update.message.reply_text("⏳ ইঞ্জিন প্রস্তুত হচ্ছে...")
-
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not engine:
-        await update.message.reply_text("⏳ ডাটা সংগ্রহ করছি...")
+# ============================================================
+# মেসেজ হ্যান্ডলার
+# ============================================================
+async def handle_message(message):
+    global is_running, engine
+    
+    text = message.get('text', '')
+    chat_id = message['chat']['id']
+    
+    # শুধু আমাদের CHAT_ID এর মেসেজ প্রসেস করি
+    if str(chat_id) != str(CHAT_ID):
         return
     
-    stats = f"""
+    if text == '/start':
+        status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
+        msg = f"""
+🤖 *MASUD AI - রিয়েল প্রেডিক্টর*
+━━━━━━━━━━━━━━━━━━━━━━
+
+📊 *স্ট্যাটাস:* {status}
+🏆 *উইন:* {engine.win_count if engine else 0}
+💔 *লস:* {engine.loss_count if engine else 0}
+📈 *ট্রেড:* {engine.total_trade if engine else 0}
+🎯 *একুরেসি:* {engine.accuracy if engine else 0}%
+
+📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers) if engine else '---'}
+
+💡 নিচের বাটন ব্যবহার করুন
+        """
+        await send_telegram_keyboard(msg, get_start_keyboard())
+    
+    elif text == '/predict':
+        if engine:
+            prediction = await engine.fetch_data()
+            if prediction:
+                await send_signal(prediction)
+            else:
+                await send_telegram_message("⏳ সিগন্যাল তৈরি হচ্ছে...")
+        else:
+            await send_telegram_message("⏳ ইঞ্জিন প্রস্তুত হচ্ছে...")
+    
+    elif text == '/stats':
+        if not engine:
+            await send_telegram_message("⏳ ডাটা সংগ্রহ করছি...")
+            return
+        
+        stats = f"""
 📊 *পরিসংখ্যান*
 ━━━━━━━━━━━━━━━━━━━
 
@@ -495,11 +535,11 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 📈 *লাস্ট ৫ ট্রেড:*
 {get_last_trades()}
-    """
-    await update.message.reply_text(stats, parse_mode='Markdown')
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = """
+        """
+        await send_telegram_message(stats)
+    
+    elif text == '/help':
+        help_text = """
 🤖 *MASUD AI Bot - সাহায্য*
 
 📌 *কমান্ডসমূহ:*
@@ -515,69 +555,151 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ✅ লাইভ স্ট্যাটাস
 
 ⚡ *পাওয়ার্ড বাই MASUD AI*
-    """
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+        """
+        await send_telegram_message(help_text)
 
 # ============================================================
-# বট চালু হওয়ার সাথে সাথে সিগন্যাল শুরু
+# Callback হ্যান্ডলার
 # ============================================================
-async def start_signal_automatically(application):
+async def handle_callback(callback):
     global is_running, engine
     
-    logger.info("🚀 Auto-starting signal system...")
+    data = callback['data']
+    callback_id = callback['id']
+    message = callback.get('message', {})
+    chat_id = message.get('chat', {}).get('id')
+    message_id = message.get('message_id')
     
-    engine = PredictionEngine()
-    await engine.fetch_data()
+    if data == "start_signal":
+        if not is_running:
+            is_running = True
+            asyncio.create_task(signal_loop())
+            await answer_callback(callback_id, "✅ সিগন্যাল চালু হয়েছে!")
+            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে! প্রতি ৩০ সেকেন্ডে আপডেট আসবে।")
+        else:
+            await answer_callback(callback_id, "⚠️ সিগন্যাল ইতিমধ্যে চালু আছে!")
     
-    is_running = True
-    asyncio.create_task(signal_loop(application.bot))
+    elif data == "stop_signal":
+        is_running = False
+        await answer_callback(callback_id, "🔴 সিগন্যাল বন্ধ করা হয়েছে!")
+        await edit_message_text(chat_id, message_id, "🔴 সিগন্যাল বন্ধ করা হয়েছে।")
     
-    logger.info("✅ Signal system is now running automatically!")
+    elif data == "stats":
+        if not engine:
+            await answer_callback(callback_id, "⏳ ইঞ্জিন প্রস্তুত হচ্ছে...")
+            return
+        
+        stats = f"""
+📊 *পরিসংখ্যান*
+━━━━━━━━━━━━━━━━━━━
+
+• মোট ট্রেড: {engine.total_trade}
+• 🏆 উইন: {engine.win_count}
+• 💔 লস: {engine.loss_count}
+• 🎯 একুরেসি: {engine.accuracy}%
+• 📡 স্ট্যাটাস: {'🟢 চলমান' if is_running else '🔴 বন্ধ'}
+
+📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers)}
+
+📈 *লাস্ট ৫ ট্রেড:*
+{get_last_trades()}
+        """
+        await answer_callback(callback_id, "📊 পরিসংখ্যান দেখানো হচ্ছে...")
+        await edit_message_text(chat_id, message_id, stats)
+    
+    elif data == "live":
+        if engine and engine.current_prediction:
+            p = engine.current_prediction
+            bar = get_confidence_bar(p['confidence'])
+            dots = get_history_dots(p.get('history', []))
+            
+            signal = f"""
+📡 *লাইভ সিগন্যাল*
+━━━━━━━━━━━━━━━━━━━
+
+🔢 পিরিয়ড: `{p['period'][-6:]}`
+🎯 সিগন্যাল: {'🟢' if p['prediction'] == 'BIG' else '🔴'} *{p['prediction']}*
+🔢 নম্বর: `{p['number']}`
+📊 কনফিডেন্স: {p['confidence']}% {bar}
+
+📈 *ট্রেন্ড অ্যানালাইসিস:*
+• লাস্ট ১০: {dots}
+• BIG: {p.get('big_count', 0)} | SMALL: {p.get('small_count', 0)}
+
+⏱️ সময়: {p['timestamp']}
+━━━━━━━━━━━━━━━━━━━
+            """
+            await answer_callback(callback_id, "📡 লাইভ সিগন্যাল দেখানো হচ্ছে...")
+            await edit_message_text(chat_id, message_id, signal)
+        else:
+            await answer_callback(callback_id, "⏳ কোনো সিগন্যাল নেই")
 
 # ============================================================
-# মেইন ফাংশন
+# মেইন লুপ
 # ============================================================
-def main():
-    global engine
+async def main_loop():
+    global offset, engine, is_running
     
-    # MASUD Banner Print
+    logger.info("🔄 Starting main loop...")
+    
+    while True:
+        try:
+            # আপডেট নেওয়া
+            updates = await get_updates(offset)
+            
+            for update in updates:
+                offset = update['update_id'] + 1
+                
+                # মেসেজ প্রসেস
+                if 'message' in update:
+                    await handle_message(update['message'])
+                
+                # Callback প্রসেস
+                if 'callback_query' in update:
+                    await handle_callback(update['callback_query'])
+            
+            await asyncio.sleep(1)
+            
+        except Exception as e:
+            logger.error(f"Main loop error: {e}")
+            await asyncio.sleep(5)
+
+# ============================================================
+# বট চালু
+# ============================================================
+async def start_bot():
+    global engine, is_running
+    
     print_banner()
-    
     logger.info("🤖 Starting Masud AI Bot...")
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
     logger.info(f"📢 Chat ID: {CHAT_ID}")
     
-    try:
-        # বট তৈরি
-        application = Application.builder().token(BOT_TOKEN).build()
-        
-        # ইঞ্জিন তৈরি
-        engine = PredictionEngine()
-        
-        # হ্যান্ডলার যোগ
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("predict", predict_command))
-        application.add_handler(CommandHandler("stats", stats_command))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(CallbackQueryHandler(button_handler))
-        
-        # বট চালু হওয়ার সাথে সাথে সিগন্যাল শুরু
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(start_signal_automatically(application))
-        
-        logger.info("✅ Bot is ready and running!")
-        print("\n" + "=" * 60)
-        print("  ✅ MASUD AI BOT IS NOW RUNNING!")
-        print("  📡 Waiting for signals...")
-        print("=" * 60 + "\n")
-        
-        # বট চালু
-        application.run_polling()
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to start: {e}")
-        raise
+    # ইঞ্জিন তৈরি
+    engine = PredictionEngine()
+    await engine.fetch_data()
+    
+    # সিগন্যাল অটো স্টার্ট
+    is_running = True
+    asyncio.create_task(signal_loop())
+    
+    logger.info("✅ Bot is ready and running!")
+    print("\n" + "=" * 60)
+    print("  ✅ MASUD AI BOT IS NOW RUNNING!")
+    print("  📡 Waiting for signals...")
+    print("=" * 60 + "\n")
+    
+    # মেইন লুপ চালু
+    await main_loop()
 
+# ============================================================
+# মেইন
+# ============================================================
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(start_bot())
+    except KeyboardInterrupt:
+        logger.info("🛑 Bot stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Fatal error: {e}")
+        raise
