@@ -4,7 +4,7 @@ import aiohttp
 import json
 import random
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
@@ -31,6 +31,9 @@ if not CHAT_ID:
     logger.error("❌ CHAT_ID environment variable is not set!")
     raise ValueError("CHAT_ID is required")
 
+logger.info("=" * 50)
+logger.info("  🅼🅰🆂🆄🅳 🅰🅸 - 🅱🅾🆃")
+logger.info("=" * 50)
 logger.info(f"✅ BOT_TOKEN: {BOT_TOKEN[:10]}...")
 logger.info(f"✅ CHAT_ID: {CHAT_ID}")
 
@@ -38,7 +41,6 @@ logger.info(f"✅ CHAT_ID: {CHAT_ID}")
 # কনফিগারেশন
 # ============================================================
 API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageNo=1&pageSize=10"
-SIGNAL_INTERVAL = 30  # ৩০ সেকেন্ড
 
 # ============================================================
 # গ্লোবাল ভেরিয়েবল
@@ -47,7 +49,6 @@ is_running = False
 last_signal = None
 last_period = None
 engine = None
-bot_app = None
 
 # ============================================================
 # প্রেডিকশন ইঞ্জিন
@@ -63,10 +64,8 @@ class PredictionEngine:
         self.total_trade = 0
         self.accuracy = 0
         self.last_10_numbers = []
-        self.is_ready = False
 
     def analyze_trend(self, numbers):
-        """ট্রেন্ড অ্যানালাইসিস"""
         if not numbers or len(numbers) < 3:
             return {'trend': 'neutral', 'confidence': 50}
         
@@ -106,7 +105,6 @@ class PredictionEngine:
         return {'trend': trend, 'confidence': max(55, confidence)}
 
     def predict_next(self, numbers):
-        """প্রেডিক্ট করুন"""
         if not numbers:
             num = random.randint(0, 9)
             return {
@@ -144,7 +142,6 @@ class PredictionEngine:
         }
 
     async def fetch_data(self):
-        """API থেকে ডাটা সংগ্রহ"""
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -155,7 +152,6 @@ class PredictionEngine:
                         try:
                             data = await response.json()
                         except:
-                            logger.warning("Invalid JSON response")
                             return None
                             
                         if data and data.get('data') and data['data'].get('list'):
@@ -190,14 +186,8 @@ class PredictionEngine:
                                         'small_count': small_count,
                                         'history': self.last_10_numbers[:10]
                                     }
-                                    self.is_ready = True
                                     return self.current_prediction
-                    else:
-                        logger.warning(f"API status: {response.status}")
                     return None
-        except asyncio.TimeoutError:
-            logger.warning("API timeout")
-            return None
         except Exception as e:
             logger.error(f"API Error: {e}")
             return None
@@ -244,8 +234,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
     
     msg = f"""
-🤖 *Masud AI - রিয়েল প্রেডিক্টর*
-━━━━━━━━━━━━━━━━━━━
+🅼🅰🆂🆄🅳 🅰🅸 - 🆁🅸🅴🅻 🅿🆁🅴🅳🅸🅲🆃🅾🆁
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📊 *স্ট্যাটাস:* {status}
 🏆 *উইন:* {engine.win_count if engine else 0}
@@ -325,7 +315,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("⏳ কোনো সিগন্যাল নেই, অপেক্ষা করুন...")
 
 async def send_signal(bot, prediction):
-    """সিগন্যাল পাঠান"""
     if not prediction or not engine:
         return
     
@@ -336,8 +325,8 @@ async def send_signal(bot, prediction):
     bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴"
     
     msg = f"""
-🎯 *Masud AI - রিয়েল প্রেডিক্ট*
-━━━━━━━━━━━━━━━━━━━
+🅼🅰🆂🆄🅳 🅰🅸 - 🆁🅸🅴🅻 🅿🆁🅴🅳🅸🅲🆃
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🔢 *পিরিয়ড:* `{prediction['period'][-6:]}`
 🎯 *সিগন্যাল:* {bs_emoji} *{prediction['prediction']}*
@@ -353,8 +342,8 @@ async def send_signal(bot, prediction):
 🎯 একুরেসি: {engine.accuracy}% | 📈 ট্রেড #{engine.total_trade}
 
 ⏱️ {prediction['timestamp']}
-━━━━━━━━━━━━━━━━━━━
-🤖 *পাওয়ার্ড বাই Masud AI*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🅿🅾🆆🅴🆁🅴🅳 🅱🆈 🅼🅰🆂🆄🅳 🅰🅸
     """
     
     try:
@@ -364,7 +353,6 @@ async def send_signal(bot, prediction):
         logger.error(f"❌ Failed to send: {e}")
 
 async def check_result(bot, prediction, actual_number):
-    """ট্রেডের ফলাফল চেক"""
     global engine
     
     if not prediction or actual_number is None or not engine:
@@ -417,7 +405,6 @@ async def check_result(bot, prediction, actual_number):
         logger.error(f"Result update failed: {e}")
 
 async def signal_loop(bot):
-    """সিগন্যাল লুপ"""
     global is_running, last_signal, last_period, engine
     
     logger.info("🔄 Signal loop started")
@@ -428,24 +415,22 @@ async def signal_loop(bot):
                 prediction = await engine.fetch_data()
                 
                 if prediction and prediction['period'] != last_period:
-                    # আগের ট্রেডের রেজাল্ট চেক
                     if last_period and last_signal:
                         if engine.history:
                             real_num = engine.history[0] if engine.history else None
                             if real_num is not None:
                                 await check_result(bot, last_signal, real_num)
                     
-                    # নতুন সিগন্যাল
                     last_period = prediction['period']
                     last_signal = prediction
                     await send_signal(bot, prediction)
                     logger.info(f"📡 New signal: {prediction['prediction']}")
             
-            await asyncio.sleep(SIGNAL_INTERVAL)
+            await asyncio.sleep(30)
             
         except Exception as e:
             logger.error(f"Loop error: {e}")
-            await asyncio.sleep(SIGNAL_INTERVAL)
+            await asyncio.sleep(30)
 
 async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if engine:
@@ -503,21 +488,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # বট চালু হওয়ার সাথে সাথে সিগন্যাল শুরু
 # ============================================================
 async def start_signal_automatically(application):
-    """বট চালু হওয়ার সাথে সাথে সিগন্যাল শুরু"""
     global is_running, engine
     
     logger.info("🚀 Auto-starting signal system...")
     
-    # ইঞ্জিন তৈরি
     engine = PredictionEngine()
-    
-    # প্রথম ডাটা ফেচ
     await engine.fetch_data()
     
-    # সিগন্যাল চালু
     is_running = True
-    
-    # সিগন্যাল লুপ শুরু
     asyncio.create_task(signal_loop(application.bot))
     
     logger.info("✅ Signal system is now running automatically!")
@@ -526,7 +504,20 @@ async def start_signal_automatically(application):
 # মেইন ফাংশন
 # ============================================================
 def main():
-    global engine, bot_app
+    global engine
+    
+    # বড় করে MASUD লেখা
+    print("=" * 60)
+    print("  ███╗   ███╗ █████╗ ███████╗██╗   ██╗██████╗ ")
+    print("  ████╗ ████║██╔══██╗██╔════╝██║   ██║██╔══██╗")
+    print("  ██╔████╔██║███████║███████╗██║   ██║██████╔╝")
+    print("  ██║╚██╔╝██║██╔══██║╚════██║██║   ██║██╔══██╗")
+    print("  ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║")
+    print("  ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝")
+    print("=" * 60)
+    print("  🤖 Masud AI - Premium Prediction Bot")
+    print("  🚀 Version 2.0 - Ready for Action!")
+    print("=" * 60)
     
     logger.info("🤖 Starting Masud AI Bot...")
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
@@ -535,7 +526,6 @@ def main():
     try:
         # বট তৈরি
         application = Application.builder().token(BOT_TOKEN).build()
-        bot_app = application
         
         # ইঞ্জিন তৈরি
         engine = PredictionEngine()
@@ -553,6 +543,10 @@ def main():
         loop.run_until_complete(start_signal_automatically(application))
         
         logger.info("✅ Bot is ready and running!")
+        print("=" * 60)
+        print("  ✅ MASUD AI BOT IS NOW RUNNING!")
+        print("  📡 Waiting for signals...")
+        print("=" * 60)
         
         # বট চালু
         application.run_polling()
