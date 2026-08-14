@@ -44,20 +44,43 @@ def print_banner():
 ║   ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║             ║
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
-║      🤖 MASUD AI - 25 ALGORITHM PREDICTION BOT             ║
-║      🚀 VERSION 7.0 - VOTING SYSTEM ACTIVE                 ║
+║      🤖 MASUD AI - ULTIMATE PREDICTION BOT                 ║
+║      🚀 VERSION 9.0 - ADMIN PANEL ADDED                    ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
     print(banner)
 
 # ============================================================
+# 🔐 এডমিন পাসওয়ার্ড
+# ============================================================
+ADMIN_PASSWORD = "msxmasud20"
+admin_session = {}  # {chat_id: authenticated}
+
+# ============================================================
+# 🖼️ ইমেজ কনফিগারেশন (ইমোজি বেইজড)
+# ============================================================
+IMAGE_CONFIG = {
+    'BIG': '🟢',
+    'SMALL': '🔴',
+    'WIN': '🏆',
+    'LOSS': '💔',
+    'WAIT': '⏳',
+    'BIG_IMAGE': '🟢🔮 BIG SIGNAL',
+    'SMALL_IMAGE': '🔴🔮 SMALL SIGNAL',
+    'WIN_IMAGE': '🏆✅ WINNER',
+    'LOSS_IMAGE': '💔❌ LOSS'
+}
+
+# ============================================================
 # টেলিগ্রাম API ফাংশন
 # ============================================================
-async def send_telegram_message(message):
+async def send_telegram_message(message, chat_id=None):
+    """টেক্সট মেসেজ পাঠায়"""
+    target_chat = chat_id or CHAT_ID
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": CHAT_ID,
+        "chat_id": target_chat,
         "text": message,
         "parse_mode": "Markdown"
     }
@@ -65,18 +88,19 @@ async def send_telegram_message(message):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=10) as response:
                 if response.status == 200:
-                    logger.info("✅ Message sent successfully")
                     return True
                 return False
     except Exception as e:
         logger.error(f"Error sending message: {e}")
         return False
 
-async def send_telegram_keyboard(message, keyboard):
+async def send_telegram_keyboard(message, keyboard, chat_id=None):
+    """কীবোর্ড সহ মেসেজ পাঠায়"""
+    target_chat = chat_id or CHAT_ID
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     reply_markup = {"inline_keyboard": keyboard}
     payload = {
-        "chat_id": CHAT_ID,
+        "chat_id": target_chat,
         "text": message,
         "parse_mode": "Markdown",
         "reply_markup": json.dumps(reply_markup)
@@ -164,9 +188,10 @@ last_period = None
 engine = None
 offset = None
 signal_count = 0
+last_api_call = 0
 
 # ============================================================
-# 🧠 ২৫টি স্মার্ট অ্যালগরিদম
+# 🧠 স্মার্ট প্রেডিকশন ইঞ্জিন
 # ============================================================
 class PredictionEngine:
     def __init__(self):
@@ -183,383 +208,134 @@ class PredictionEngine:
         self.small_count = 0
         self.consecutive_big = 0
         self.consecutive_small = 0
-        self.alternating_count = 0
-        self.algorithm_votes = {'BIG': 0, 'SMALL': 0}
-        self.winning_algorithms = []
-
-    # ============================================================
-    # অ্যালগরিদম ১-৫: ট্রেন্ড বেইজড
-    # ============================================================
-    def alg_trend_60(self, numbers):
-        """ট্রেন্ড ৬০% - ৬০% এর বেশি BIG/SMALL হলে"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        bigs = sum(1 for n in numbers if n >= 5)
-        ratio = bigs / len(numbers)
-        if ratio >= 0.60:
-            return {'signal': 'BIG', 'confidence': 75}
-        elif ratio <= 0.40:
-            return {'signal': 'SMALL', 'confidence': 75}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_trend_70(self, numbers):
-        """ট্রেন্ড ৭০% - ৭০% এর বেশি BIG/SMALL হলে"""
-        if len(numbers) < 8:
-            return {'signal': None, 'confidence': 0}
-        bigs = sum(1 for n in numbers if n >= 5)
-        ratio = bigs / len(numbers)
-        if ratio >= 0.70:
-            return {'signal': 'SMALL', 'confidence': 85}  # রিভার্স
-        elif ratio <= 0.30:
-            return {'signal': 'BIG', 'confidence': 85}   # রিভার্স
-        return {'signal': None, 'confidence': 0}
-
-    def alg_trend_reverse(self, numbers):
-        """ট্রেন্ড রিভার্স - বেশি সাইডের উল্টোটা"""
-        if len(numbers) < 6:
-            return {'signal': None, 'confidence': 0}
-        bigs = sum(1 for n in numbers[-6:] if n >= 5)
-        if bigs >= 4:
-            return {'signal': 'SMALL', 'confidence': 70}
-        elif bigs <= 2:
-            return {'signal': 'BIG', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_moving_average(self, numbers):
-        """মুভিং এভারেজ - গড়ের ভিত্তিতে"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        avg = sum(numbers[-5:]) / 5
-        if avg > 5.5:
-            return {'signal': 'SMALL', 'confidence': 65}
-        elif avg < 4.5:
-            return {'signal': 'BIG', 'confidence': 65}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_weighted_trend(self, numbers):
-        """ওয়েটেড ট্রেন্ড - নতুন সংখ্যা বেশি ওয়েট"""
-        if len(numbers) < 8:
-            return {'signal': None, 'confidence': 0}
-        weights = [1, 2, 3, 4, 5]  # নতুনদের বেশি ওয়েট
-        last_5 = numbers[-5:]
-        weighted_sum = sum(n * w for n, w in zip(last_5, weights))
-        avg = weighted_sum / sum(weights)
-        if avg > 5.5:
-            return {'signal': 'SMALL', 'confidence': 70}
-        elif avg < 4.5:
-            return {'signal': 'BIG', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    # ============================================================
-    # অ্যালগরিদম ৬-১০: কনসিকিউটিভ বেইজড
-    # ============================================================
-    def alg_consecutive_3(self, numbers):
-        """৩টা কনসিকিউটিভ - রিভার্স"""
-        if len(numbers) < 3:
-            return {'signal': None, 'confidence': 0}
-        last_3 = numbers[-3:]
-        if all(n >= 5 for n in last_3):
-            return {'signal': 'SMALL', 'confidence': 80}
-        elif all(n < 5 for n in last_3):
-            return {'signal': 'BIG', 'confidence': 80}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_consecutive_4(self, numbers):
-        """৪টা কনসিকিউটিভ - স্ট্রং রিভার্স"""
-        if len(numbers) < 4:
-            return {'signal': None, 'confidence': 0}
-        last_4 = numbers[-4:]
-        if all(n >= 5 for n in last_4):
-            return {'signal': 'SMALL', 'confidence': 90}
-        elif all(n < 5 for n in last_4):
-            return {'signal': 'BIG', 'confidence': 90}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_consecutive_5(self, numbers):
-        """৫টা কনসিকিউটিভ - খুব স্ট্রং রিভার্স"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        last_5 = numbers[-5:]
-        if all(n >= 5 for n in last_5):
-            return {'signal': 'SMALL', 'confidence': 95}
-        elif all(n < 5 for n in last_5):
-            return {'signal': 'BIG', 'confidence': 95}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_consecutive_break(self, numbers):
-        """কনসিকিউটিভ ব্রেক - কখন ব্রেক হবে"""
-        if len(numbers) < 3:
-            return {'signal': None, 'confidence': 0}
-        last_2 = numbers[-2:]
-        if (last_2[0] >= 5) != (last_2[1] >= 5):
-            # ব্রেক হয়েছে, নতুন ট্রেন্ড ফলো
-            return {'signal': 'BIG' if last_2[1] >= 5 else 'SMALL', 'confidence': 65}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_consecutive_alternate(self, numbers):
-        """কনসিকিউটিভ অল্টারনেট"""
-        if len(numbers) < 6:
-            return {'signal': None, 'confidence': 0}
-        last_6 = numbers[-6:]
-        pattern = [1 if n >= 5 else 0 for n in last_6]
-        # ১,০,১,০,১,০ প্যাটার্ন চেক
-        if pattern == [1, 0, 1, 0, 1, 0]:
-            return {'signal': 'BIG', 'confidence': 75}
-        elif pattern == [0, 1, 0, 1, 0, 1]:
-            return {'signal': 'SMALL', 'confidence': 75}
-        return {'signal': None, 'confidence': 0}
-
-    # ============================================================
-    # অ্যালগরিদম ১১-১৫: অল্টারনেটিং বেইজড
-    # ============================================================
-    def alg_alternating_3(self, numbers):
-        """৩টা অল্টারনেটিং"""
-        if len(numbers) < 3:
-            return {'signal': None, 'confidence': 0}
-        last_3 = numbers[-3:]
-        if (last_3[0] >= 5) != (last_3[1] >= 5) and (last_3[1] >= 5) != (last_3[2] >= 5):
-            return {'signal': 'BIG' if last_3[-1] < 5 else 'SMALL', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_alternating_4(self, numbers):
-        """৪টা অল্টারনেটিং"""
-        if len(numbers) < 4:
-            return {'signal': None, 'confidence': 0}
-        last_4 = numbers[-4:]
-        if all((last_4[i] >= 5) != (last_4[i+1] >= 5) for i in range(3)):
-            return {'signal': 'BIG' if last_4[-1] < 5 else 'SMALL', 'confidence': 80}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_alternating_5(self, numbers):
-        """৫টা অল্টারনেটিং"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        last_5 = numbers[-5:]
-        if all((last_5[i] >= 5) != (last_5[i+1] >= 5) for i in range(4)):
-            return {'signal': 'BIG' if last_5[-1] < 5 else 'SMALL', 'confidence': 90}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_alternating_break(self, numbers):
-        """অল্টারনেটিং ব্রেক"""
-        if len(numbers) < 4:
-            return {'signal': None, 'confidence': 0}
-        last_4 = numbers[-4:]
-        if all((last_4[i] >= 5) == (last_4[i+1] >= 5) for i in range(3)):
-            # অল্টারনেটিং ব্রেক হয়েছে
-            return {'signal': 'BIG' if last_4[-1] >= 5 else 'SMALL', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_alternating_reverse(self, numbers):
-        """অল্টারনেটিং রিভার্স"""
-        if len(numbers) < 4:
-            return {'signal': None, 'confidence': 0}
-        last_4 = numbers[-4:]
-        if all((last_4[i] >= 5) != (last_4[i+1] >= 5) for i in range(3)):
-            return {'signal': 'BIG' if last_4[-1] >= 5 else 'SMALL', 'confidence': 65}
-        return {'signal': None, 'confidence': 0}
-
-    # ============================================================
-    # অ্যালগরিদম ১৬-২০: স্পেশাল প্যাটার্ন
-    # ============================================================
-    def alg_double_big(self, numbers):
-        """ডাবল বিগ - ২টা BIG পরপর"""
-        if len(numbers) < 2:
-            return {'signal': None, 'confidence': 0}
-        if numbers[-1] >= 5 and numbers[-2] >= 5:
-            return {'signal': 'SMALL', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_double_small(self, numbers):
-        """ডাবল স্মল - ২টা SMALL পরপর"""
-        if len(numbers) < 2:
-            return {'signal': None, 'confidence': 0}
-        if numbers[-1] < 5 and numbers[-2] < 5:
-            return {'signal': 'BIG', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_fibonacci(self, numbers):
-        """ফিবোনাচি প্যাটার্ন"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        last_5 = numbers[-5:]
-        # BIG/SMALL প্যাটার্ন চেক
-        pattern = [1 if n >= 5 else 0 for n in last_5]
-        if pattern == [1, 0, 1, 1, 0]:
-            return {'signal': 'BIG', 'confidence': 75}
-        elif pattern == [0, 1, 0, 0, 1]:
-            return {'signal': 'SMALL', 'confidence': 75}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_zigzag(self, numbers):
-        """জিগজ্যাগ প্যাটার্ন"""
-        if len(numbers) < 6:
-            return {'signal': None, 'confidence': 0}
-        last_6 = numbers[-6:]
-        # HIGH-LOW-HIGH-LOW-HIGH-LOW
-        if all((last_6[i] >= 5) != (last_6[i+1] >= 5) for i in range(5)):
-            return {'signal': 'BIG' if last_6[-1] < 5 else 'SMALL', 'confidence': 80}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_momentum(self, numbers):
-        """মোমেন্টাম - উর্ধ্বমুখী/নিম্নমুখী"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        last_5 = numbers[-5:]
-        avg = sum(last_5) / 5
-        if avg > sum(numbers[-10:-5]) / 5:
-            return {'signal': 'BIG', 'confidence': 70}  # উর্ধ্বমুখী
-        elif avg < sum(numbers[-10:-5]) / 5:
-            return {'signal': 'SMALL', 'confidence': 70}  # নিম্নমুখী
-        return {'signal': None, 'confidence': 0}
-
-    # ============================================================
-    # অ্যালগরিদম ২১-২৫: অ্যাডভান্সড স্ট্রাটেজি
-    # ============================================================
-    def alg_martingale(self, numbers):
-        """মার্টিনগেল - লসের পর ডাবল"""
-        if len(self.trade_history) < 2:
-            return {'signal': None, 'confidence': 0}
-        last_trade = self.trade_history[-1]
-        if last_trade['result'] == 'Loss':
-            # লসের পর উল্টোটা
-            return {'signal': 'BIG' if last_trade['prediction'] == 'SMALL' else 'SMALL', 'confidence': 75}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_anti_martingale(self, numbers):
-        """অ্যান্টি-মার্টিনগেল - উইনের পর ডাবল"""
-        if len(self.trade_history) < 2:
-            return {'signal': None, 'confidence': 0}
-        last_trade = self.trade_history[-1]
-        if last_trade['result'] == 'Win':
-            # উইনের পর একই
-            return {'signal': last_trade['prediction'], 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_mean_reversion(self, numbers):
-        """মিন রিভার্সন - গড়ে ফিরে আসা"""
-        if len(numbers) < 10:
-            return {'signal': None, 'confidence': 0}
-        avg = sum(numbers) / len(numbers)
-        last = numbers[-1]
-        if last > avg + 2:
-            return {'signal': 'SMALL', 'confidence': 70}
-        elif last < avg - 2:
-            return {'signal': 'BIG', 'confidence': 70}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_volatility(self, numbers):
-        """ভোলাটিলিটি - বেশি ওঠানামা"""
-        if len(numbers) < 5:
-            return {'signal': None, 'confidence': 0}
-        last_5 = numbers[-5:]
-        variance = sum((n - sum(last_5)/5) ** 2 for n in last_5) / 5
-        if variance > 5:
-            return {'signal': 'BIG' if last_5[-1] >= 5 else 'SMALL', 'confidence': 75}
-        return {'signal': None, 'confidence': 0}
-
-    def alg_smart_vote(self, numbers):
-        """স্মার্ট ভোট - সব অ্যালগরিদমের ভোট"""
-        return self.get_voting_result(numbers)
-
-    # ============================================================
-    # 🗳️ ভোটিং সিস্টেম - সব অ্যালগরিদমের ভোট নেয়
-    # ============================================================
-    def get_voting_result(self, numbers):
-        """২৫টি অ্যালগরিদমের ভোট নেয়"""
-        algorithms = [
-            self.alg_trend_60,
-            self.alg_trend_70,
-            self.alg_trend_reverse,
-            self.alg_moving_average,
-            self.alg_weighted_trend,
-            self.alg_consecutive_3,
-            self.alg_consecutive_4,
-            self.alg_consecutive_5,
-            self.alg_consecutive_break,
-            self.alg_consecutive_alternate,
-            self.alg_alternating_3,
-            self.alg_alternating_4,
-            self.alg_alternating_5,
-            self.alg_alternating_break,
-            self.alg_alternating_reverse,
-            self.alg_double_big,
-            self.alg_double_small,
-            self.alg_fibonacci,
-            self.alg_zigzag,
-            self.alg_momentum,
-            self.alg_martingale,
-            self.alg_anti_martingale,
-            self.alg_mean_reversion,
-            self.alg_volatility,
-        ]
         
-        votes = {'BIG': 0, 'SMALL': 0, 'WAIT': 0}
-        algo_results = []
-        confidence_sum = 0
-        confidence_count = 0
-        
-        for algo in algorithms:
-            try:
-                result = algo(numbers)
-                if result and result.get('signal'):
-                    votes[result['signal']] += 1
-                    confidence_sum += result.get('confidence', 50)
-                    confidence_count += 1
-                    algo_results.append(f"{algo.__name__}: {result['signal']} ({result.get('confidence', 0)}%)")
-            except:
-                continue
-        
-        # ভোটের ভিত্তিতে সিদ্ধান্ত
-        if votes['BIG'] > votes['SMALL'] and votes['BIG'] >= 3:
-            avg_confidence = int(confidence_sum / confidence_count) if confidence_count > 0 else 60
-            return {
-                'signal': 'BIG',
-                'confidence': min(95, avg_confidence + 5),
-                'votes': votes,
-                'algorithms': algo_results[:5]  # টপ ৫ দেখায়
-            }
-        elif votes['SMALL'] > votes['BIG'] and votes['SMALL'] >= 3:
-            avg_confidence = int(confidence_sum / confidence_count) if confidence_count > 0 else 60
-            return {
-                'signal': 'SMALL',
-                'confidence': min(95, avg_confidence + 5),
-                'votes': votes,
-                'algorithms': algo_results[:5]
-            }
-        else:
+        # 🔥 ইমেজ কনফিগারেশন
+        self.images = {
+            'BIG': '🟢',
+            'SMALL': '🔴',
+            'WIN': '🏆',
+            'LOSS': '💔',
+            'WAIT': '⏳'
+        }
+
+    # ============================================================
+    # 🎯 ব্যালান্সড অ্যালগরিদম
+    # ============================================================
+    def smart_predict(self, numbers):
+        """ব্যালান্সড অ্যালগরিদম - BIG/SMALL সমান সুযোগ"""
+        if not numbers or len(numbers) < 5:
             return {
                 'signal': 'WAIT',
+                'number': random.randint(0, 9),
                 'confidence': 0,
-                'votes': votes,
-                'algorithms': ['No clear signal']
+                'reason': 'Insufficient data'
             }
+        
+        # ট্রেন্ড অ্যানালাইসিস
+        bigs = sum(1 for n in numbers if n >= 5)
+        smalls = len(numbers) - bigs
+        big_ratio = bigs / len(numbers)
+        
+        # কনসিকিউটিভ চেক
+        consecutive_big = 0
+        consecutive_small = 0
+        for n in reversed(numbers[-5:]):
+            if n >= 5:
+                if consecutive_small > 0:
+                    break
+                consecutive_big += 1
+            else:
+                if consecutive_big > 0:
+                    break
+                consecutive_small += 1
+        
+        # অল্টারনেটিং চেক
+        last_5 = numbers[-5:]
+        alternating = all((last_5[i] >= 5) != (last_5[i+1] >= 5) for i in range(4)) if len(last_5) >= 5 else False
+        
+        # 🎯 ডিসিশন মেকিং - ব্যালান্সড
+        score_big = 0
+        score_small = 0
+        
+        # ফ্যাক্টর ১: ট্রেন্ড (৪০%)
+        if big_ratio >= 0.55:
+            score_big += 40
+        elif big_ratio <= 0.45:
+            score_small += 40
+        else:
+            score_big += 20
+            score_small += 20
+        
+        # ফ্যাক্টর ২: কনসিকিউটিভ (৩৫%)
+        if consecutive_big >= 3:
+            score_small += 35  # রিভার্স
+        elif consecutive_small >= 3:
+            score_big += 35   # রিভার্স
+        elif consecutive_big >= 2:
+            score_small += 20
+        elif consecutive_small >= 2:
+            score_big += 20
+        else:
+            score_big += 15
+            score_small += 15
+        
+        # ফ্যাক্টর ৩: অল্টারনেটিং (২৫%)
+        if alternating:
+            last = numbers[-1]
+            if last >= 5:
+                score_small += 25  # BIG এর পর SMALL
+            else:
+                score_big += 25    # SMALL এর পর BIG
+        else:
+            score_big += 12
+            score_small += 12
+        
+        # 🗳️ ফাইনাল সিদ্ধান্ত
+        if score_big > score_small + 10:
+            signal = 'BIG'
+            num = random.randint(5, 9)
+            confidence = min(90, 60 + (score_big - score_small))
+        elif score_small > score_big + 10:
+            signal = 'SMALL'
+            num = random.randint(0, 4)
+            confidence = min(90, 60 + (score_small - score_big))
+        else:
+            signal = 'WAIT'
+            num = random.randint(0, 9)
+            confidence = 0
+        
+        return {
+            'signal': signal,
+            'number': num,
+            'confidence': min(95, confidence),
+            'reason': f"BIG:{score_big} SMALL:{score_small}",
+            'scores': {'BIG': score_big, 'SMALL': score_small}
+        }
 
     # ============================================================
-    # 📡 পিরিয়ড সিঙ্ক - সম্পূর্ণ ফিক্স
+    # 📡 পিরিয়ড সিঙ্ক
     # ============================================================
     def get_current_win_go_period(self):
-        """উইংগোর বর্তমান পিরিয়ড ক্যালকুলেট - অটো +১"""
+        """দ্রুত পিরিয়ড ক্যালকুলেশন"""
         now = datetime.now()
         base = datetime(2024, 1, 1, 0, 0, 0)
         seconds_diff = int((now - base).total_seconds())
-        period_number = (seconds_diff // 30) + 1  # +১ যোগ করা হয়েছে
+        period_number = (seconds_diff // 30) + 1
         base_period = 728000
-        current_period = base_period + period_number
-        return str(current_period)
+        return str(base_period + period_number)
 
     def sync_period(self, api_period, win_go_period):
-        """পিরিয়ড সিঙ্ক - অটো +১ যদি প্রয়োজন হয়"""
+        """পিরিয়ড সিঙ্ক - অটো +১"""
         try:
             api_int = int(api_period)
             win_go_int = int(win_go_period)
             diff = win_go_int - api_int
             
             if diff == 1:
-                return win_go_period  # WinGo period ব্যবহার
+                return win_go_period
             elif diff == 0:
-                return api_period  # সিঙ্ক
+                return api_period
             else:
-                # বড় পার্থক্য - API + 1
                 return str(api_int + 1)
         except:
             return api_period
@@ -568,25 +344,30 @@ class PredictionEngine:
     # 📊 API ডাটা ফেচ
     # ============================================================
     async def fetch_data(self):
+        """API থেকে ডাটা সংগ্রহ"""
+        global last_api_call
+        
+        # Rate limiting - 2 সেকেন্ডের কমে আবার কল না
+        current_time = datetime.now().timestamp()
+        if current_time - last_api_call < 2:
+            return None
+        last_api_call = current_time
+        
         try:
-            logger.info("📡 Fetching data from API...")
-            
             win_go_period = self.get_current_win_go_period()
-            logger.info(f"📌 Current WinGo Period: {win_go_period}")
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     API_URL, 
                     headers=API_HEADERS, 
-                    timeout=15,
+                    timeout=8,
                     allow_redirects=True
                 ) as response:
                     if response.status == 200:
                         try:
                             text = await response.text()
                             data = json.loads(text)
-                        except Exception as e:
-                            logger.error(f"❌ JSON parse error: {e}")
+                        except:
                             return None
                             
                         if data and data.get('data') and data['data'].get('list'):
@@ -601,10 +382,7 @@ class PredictionEngine:
                             
                             if numbers:
                                 api_latest_issue = items[0].get('issueNumber', '')
-                                
-                                # পিরিয়ড সিঙ্ক - অটো +১
                                 use_period = self.sync_period(api_latest_issue, win_go_period)
-                                logger.info(f"🔄 Period sync: API {api_latest_issue} → {use_period}")
                                 
                                 if use_period != self.last_issue:
                                     self.last_issue = use_period
@@ -626,42 +404,33 @@ class PredictionEngine:
                                                 break
                                             self.consecutive_small += 1
                                     
-                                    # 🗳️ ভোটিং সিস্টেম প্রেডিক্ট
-                                    voting_result = self.get_voting_result(self.history)
-                                    
-                                    # নম্বর জেনারেট
-                                    if voting_result['signal'] == 'BIG':
-                                        num = random.randint(5, 9)
-                                    elif voting_result['signal'] == 'SMALL':
-                                        num = random.randint(0, 4)
-                                    else:
-                                        num = random.randint(0, 9)
+                                    prediction = self.smart_predict(self.history)
                                     
                                     self.current_prediction = {
                                         'period': use_period,
-                                        'prediction': voting_result['signal'],
-                                        'number': num,
-                                        'confidence': voting_result['confidence'],
+                                        'prediction': prediction['signal'],
+                                        'number': prediction['number'],
+                                        'confidence': prediction['confidence'],
                                         'timestamp': datetime.now().strftime('%H:%M:%S'),
                                         'big_count': self.big_count,
                                         'small_count': self.small_count,
                                         'consecutive_big': self.consecutive_big,
                                         'consecutive_small': self.consecutive_small,
                                         'history': self.last_10_numbers[:10],
-                                        'votes': voting_result.get('votes', {}),
-                                        'algorithms': voting_result.get('algorithms', []),
+                                        'reason': prediction.get('reason', ''),
+                                        'scores': prediction.get('scores', {}),
                                         'api_period': api_latest_issue,
                                         'win_go_period': win_go_period
                                     }
                                     
-                                    logger.info(f"🎯 VOTING RESULT: {voting_result}")
                                     return self.current_prediction
-                    else:
-                        logger.warning(f"⚠️ API status: {response.status}")
                     return None
                     
+        except asyncio.TimeoutError:
+            logger.warning("API timeout")
+            return None
         except Exception as e:
-            logger.error(f"❌ API Error: {e}")
+            logger.error(f"API Error: {e}")
             return None
 
 # ============================================================
@@ -700,13 +469,67 @@ def get_start_keyboard():
         [
             {"text": "📊 পরিসংখ্যান", "callback_data": "stats"},
             {"text": "📡 লাইভ সিগন্যাল", "callback_data": "live"}
+        ],
+        [
+            {"text": "🖼️ ইমেজ সেটিং", "callback_data": "image_settings"},
+            {"text": "📈 ট্রেড হিস্টরি", "callback_data": "trade_history"}
         ]
     ]
+
+# ============================================================
+# 🔐 এডমিন প্যানেল
+# ============================================================
+def get_admin_keyboard():
+    """এডমিন প্যানেল কীবোর্ড"""
+    return [
+        [
+            {"text": "🟢 BIG ইমেজ সেট", "callback_data": "set_big"},
+            {"text": "🔴 SMALL ইমেজ সেট", "callback_data": "set_small"}
+        ],
+        [
+            {"text": "🏆 WIN ইমেজ সেট", "callback_data": "set_win"},
+            {"text": "💔 LOSS ইমেজ সেট", "callback_data": "set_loss"}
+        ],
+        [
+            {"text": "📊 স্ট্যাটাস দেখুন", "callback_data": "admin_stats"},
+            {"text": "🔙 ব্যাক", "callback_data": "back_to_main"}
+        ]
+    ]
+
+def create_signal_image(signal, number, confidence):
+    """সিগন্যাল ইমেজ তৈরি"""
+    if signal == 'BIG':
+        emoji = '🟢'
+        text = '🔮 BIG SIGNAL'
+    elif signal == 'SMALL':
+        emoji = '🔴'
+        text = '🔮 SMALL SIGNAL'
+    elif signal == 'WIN':
+        emoji = '🏆'
+        text = '✅ WINNER'
+    elif signal == 'LOSS':
+        emoji = '💔'
+        text = '❌ LOSS'
+    else:
+        emoji = '⏳'
+        text = '⏳ WAIT'
+    
+    return f"""
+╔══════════════════════════════════╗
+║                                  ║
+║        {emoji} {text} {emoji}         ║
+║                                  ║
+║     🎯 Number: {number}              ║
+║     📊 Confidence: {confidence}%     ║
+║                                  ║
+╚══════════════════════════════════╝
+"""
 
 # ============================================================
 # সিগন্যাল ফাংশন
 # ============================================================
 async def send_signal(prediction):
+    """সিগন্যাল পাঠান"""
     global engine, signal_count
     
     if not prediction or not engine:
@@ -715,29 +538,15 @@ async def send_signal(prediction):
     signal_count += 1
     engine.total_trade += 1
     
+    signal_emoji = engine.images.get(prediction['prediction'], '❓')
+    signal_image = create_signal_image(
+        prediction['prediction'],
+        prediction['number'],
+        prediction['confidence']
+    )
+    
     bar = get_confidence_bar(prediction['confidence'])
     dots = get_history_dots(prediction.get('history', []))
-    
-    # সিগন্যাল টাইপ
-    if prediction['prediction'] == 'BIG':
-        bs_emoji = "🟢"
-        signal_type = "🎯"
-    elif prediction['prediction'] == 'SMALL':
-        bs_emoji = "🔴"
-        signal_type = "🎯"
-    else:
-        bs_emoji = "⏳"
-        signal_type = "⏳"
-    
-    # ভোটিং ইনফো
-    votes = prediction.get('votes', {})
-    votes_info = f"\n🗳️ ভোট: BIG {votes.get('BIG', 0)} | SMALL {votes.get('SMALL', 0)}"
-    
-    # অ্যালগরিদম ইনফো
-    algos = prediction.get('algorithms', [])
-    algo_info = "\n🧠 অ্যালগরিদম:\n"
-    for i, algo in enumerate(algos[:5], 1):
-        algo_info += f"   {i}. {algo}\n"
     
     # পিরিয়ড সিঙ্ক ইনফো
     period_info = ""
@@ -745,12 +554,17 @@ async def send_signal(prediction):
         if prediction['api_period'] != prediction['win_go_period']:
             period_info = f"\n🔄 সিঙ্ক: {prediction['api_period']} → {prediction['win_go_period']}"
     
+    scores = prediction.get('scores', {})
+    scores_info = f"\n📊 স্কোর: BIG {scores.get('BIG', 0)} | SMALL {scores.get('SMALL', 0)}"
+    
     msg = f"""
-{signal_type} *MASUD AI - ২৫ অ্যালগরিদম প্রেডিক্ট*
+{signal_image}
+
+{signal_emoji} *MASUD AI - রিয়েল প্রেডিক্ট*
 ━━━━━━━━━━━━━━━━━━━━━━
 
 🔢 *পিরিয়ড:* `{prediction['period'][-6:]}`{period_info}
-🎯 *সিগন্যাল:* {bs_emoji} *{prediction['prediction']}*
+🎯 *সিগন্যাল:* {signal_emoji} *{prediction['prediction']}*
 🔢 *প্রেডিক্টেড নম্বর:* `{prediction['number'] if prediction['prediction'] != 'WAIT' else '--'}`
 📊 *কনফিডেন্স:* {prediction['confidence']}% {bar if prediction['prediction'] != 'WAIT' else '⏳'}
 
@@ -759,8 +573,7 @@ async def send_signal(prediction):
 • BIG: {prediction.get('big_count', 0)} | SMALL: {prediction.get('small_count', 0)}
 • কনসিকিউটিভ BIG: {prediction.get('consecutive_big', 0)}
 • কনসিকিউটিভ SMALL: {prediction.get('consecutive_small', 0)}
-{votes_info}
-{algo_info}
+{scores_info}
 
 📊 *পরিসংখ্যান:*
 🏆 উইন: {engine.win_count} | 💔 লস: {engine.loss_count}
@@ -772,9 +585,10 @@ async def send_signal(prediction):
     """
     
     await send_telegram_message(msg)
-    logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']} (Confidence: {prediction['confidence']}%)")
+    logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']}")
 
 async def check_result(prediction, actual_number):
+    """রেজাল্ট চেক"""
     global engine
     
     if not prediction or actual_number is None or not engine:
@@ -788,10 +602,12 @@ async def check_result(prediction, actual_number):
     
     if is_win:
         engine.win_count += 1
-        result_text = "✅ *উইন!* 🏆"
+        result_emoji = engine.images.get('WIN', '🏆')
+        result_text = f"{result_emoji} *উইন!* 🏆"
     else:
         engine.loss_count += 1
-        result_text = "❌ *লস!* 💔"
+        result_emoji = engine.images.get('LOSS', '💔')
+        result_text = f"{result_emoji} *লস!* 💔"
     
     if engine.total_trade > 0:
         engine.accuracy = round((engine.win_count / engine.total_trade) * 100, 1)
@@ -805,7 +621,16 @@ async def check_result(prediction, actual_number):
     if len(engine.trade_history) > 50:
         engine.trade_history.pop(0)
     
+    # WIN/LOSS ইমেজ
+    result_image = create_signal_image(
+        'WIN' if is_win else 'LOSS',
+        actual_number,
+        engine.accuracy
+    )
+    
     msg = f"""
+{result_image}
+
 📊 *ট্রেড আপডেট*
 ━━━━━━━━━━━━━━━━━━━
 
@@ -830,9 +655,10 @@ async def check_result(prediction, actual_number):
 # সিগন্যাল লুপ
 # ============================================================
 async def signal_loop():
+    """সিগন্যাল লুপ"""
     global is_running, last_signal, last_period, engine
     
-    logger.info("🔄 Signal loop started - 25 ALGORITHMS ACTIVE")
+    logger.info("🔄 Signal loop started")
     
     while is_running:
         try:
@@ -851,9 +677,9 @@ async def signal_loop():
                         last_signal = prediction
                         await send_signal(prediction)
                     else:
-                        logger.info(f"⏳ Same period {prediction['period']}")
+                        logger.debug(f"⏳ Same period {prediction['period']}")
                 else:
-                    logger.info("⏳ No prediction")
+                    logger.debug("⏳ No prediction")
             
             await asyncio.sleep(30)
             
@@ -865,18 +691,51 @@ async def signal_loop():
 # মেসেজ হ্যান্ডলার
 # ============================================================
 async def handle_message(message):
-    global is_running, engine
+    global is_running, engine, admin_session
     
     text = message.get('text', '')
-    chat_id = message['chat']['id']
+    chat_id = str(message['chat']['id'])
+    user_id = str(message['from']['id'])
     
-    if str(chat_id) != str(CHAT_ID):
+    # শুধু আমাদের CHAT_ID এর মেসেজ প্রসেস করি
+    if chat_id != str(CHAT_ID):
         return
     
+    # 🔐 এডমিন প্যানেল - /admin কমান্ড
+    if text == '/admin':
+        # পাসওয়ার্ড চাওয়া
+        admin_session[user_id] = {'step': 'awaiting_password'}
+        await send_telegram_message(
+            "🔐 *এডমিন প্যানেল*\n\n"
+            "দয়া করে পাসওয়ার্ড দিন:",
+            chat_id
+        )
+        return
+    
+    # পাসওয়ার্ড চেক
+    if user_id in admin_session and admin_session[user_id].get('step') == 'awaiting_password':
+        if text == ADMIN_PASSWORD:
+            admin_session[user_id] = {'step': 'authenticated'}
+            await send_telegram_keyboard(
+                "✅ *এডমিন প্যানেল খোলা হয়েছে!*\n\n"
+                "নিচের অপশনগুলি থেকে বেছে নিন:",
+                get_admin_keyboard(),
+                chat_id
+            )
+        else:
+            await send_telegram_message(
+                "❌ *ভুল পাসওয়ার্ড!*\n\n"
+                "আবার চেষ্টা করুন অথবা /admin দিয়ে শুরু করুন।",
+                chat_id
+            )
+            admin_session.pop(user_id, None)
+        return
+    
+    # রেগুলার কমান্ড
     if text == '/start':
         status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
         msg = f"""
-🤖 *MASUD AI - ২৫ অ্যালগরিদম প্রেডিক্টর*
+🤖 *MASUD AI - রিয়েল প্রেডিক্টর*
 ━━━━━━━━━━━━━━━━━━━━━━
 
 📊 *স্ট্যাটাস:* {status}
@@ -887,11 +746,9 @@ async def handle_message(message):
 
 📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers) if engine else '---'}
 
-🧠 *২৫টি অ্যালগরিদম সক্রিয়*
-🗳️ *ভোটিং সিস্টেম চালু*
 💡 নিচের বাটন ব্যবহার করুন
         """
-        await send_telegram_keyboard(msg, get_start_keyboard())
+        await send_telegram_keyboard(msg, get_start_keyboard(), chat_id)
     
     elif text == '/predict':
         if engine:
@@ -899,13 +756,13 @@ async def handle_message(message):
             if prediction:
                 await send_signal(prediction)
             else:
-                await send_telegram_message("⏳ সিগন্যাল তৈরি হচ্ছে...")
+                await send_telegram_message("⏳ সিগন্যাল তৈরি হচ্ছে...", chat_id)
         else:
-            await send_telegram_message("⏳ ইঞ্জিন প্রস্তুত হচ্ছে...")
+            await send_telegram_message("⏳ ইঞ্জিন প্রস্তুত হচ্ছে...", chat_id)
     
     elif text == '/stats':
         if not engine:
-            await send_telegram_message("⏳ ডাটা সংগ্রহ করছি...")
+            await send_telegram_message("⏳ ডাটা সংগ্রহ করছি...", chat_id)
             return
         
         stats = f"""
@@ -923,7 +780,7 @@ async def handle_message(message):
 📈 *লাস্ট ৫ ট্রেড:*
 {get_last_trades()}
         """
-        await send_telegram_message(stats)
+        await send_telegram_message(stats, chat_id)
     
     elif text == '/help':
         help_text = """
@@ -934,38 +791,166 @@ async def handle_message(message):
 /predict - তাৎক্ষণিক সিগন্যাল
 /stats - পরিসংখ্যান দেখুন
 /help - এই মেসেজ দেখান
+/admin - এডমিন প্যানেল খুলুন
 
-🧠 *২৫টি অ্যালগরিদম:*
-• ট্রেন্ড বেইজড (৫টি)
-• কনসিকিউটিভ বেইজড (৫টি)
-• অল্টারনেটিং বেইজড (৫টি)
-• স্পেশাল প্যাটার্ন (৫টি)
-• অ্যাডভান্সড স্ট্রাটেজি (৫টি)
-
-🗳️ *ভোটিং সিস্টেম:* সব অ্যালগরিদমের ভোট নেয়
+📊 *ফিচারসমূহ:*
+✅ ৩০ সেকেন্ডে অটো সিগন্যাল
+✅ BIG/SMALL প্রেডিক্ট
+✅ উইন/লস ট্র্যাকার
+✅ লাইভ স্ট্যাটাস
+✅ ইমেজ সাপোর্ট
+✅ এডমিন প্যানেল
 
 ⚡ *পাওয়ার্ড বাই MASUD AI*
         """
-        await send_telegram_message(help_text)
+        await send_telegram_message(help_text, chat_id)
 
 # ============================================================
 # Callback হ্যান্ডলার
 # ============================================================
 async def handle_callback(callback):
-    global is_running, engine
+    global is_running, engine, admin_session
     
     data = callback['data']
     callback_id = callback['id']
     message = callback.get('message', {})
     chat_id = message.get('chat', {}).get('id')
     message_id = message.get('message_id')
+    user_id = str(callback['from']['id'])
     
+    # এডমিন চেক
+    is_admin = user_id in admin_session and admin_session[user_id].get('step') == 'authenticated'
+    
+    # ============================================================
+    # 🔐 এডমিন প্যানেল কমান্ড
+    # ============================================================
+    if data == 'image_settings':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        await edit_message_text(
+            chat_id, message_id,
+            "🖼️ *ইমেজ সেটিংস*\n\n"
+            "কোন ইমেজ পরিবর্তন করতে চান?",
+            get_admin_keyboard()
+        )
+        await answer_callback(callback_id, "🖼️ ইমেজ সেটিংস খোলা হয়েছে")
+        return
+    
+    elif data == 'set_big':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        if engine:
+            engine.images['BIG'] = '🟢'
+        await answer_callback(callback_id, "✅ BIG ইমেজ সেট করা হয়েছে!")
+        await edit_message_text(
+            chat_id, message_id,
+            "✅ *BIG ইমেজ সেট করা হয়েছে!*\n\n"
+            "বর্তমান BIG ইমেজ: 🟢",
+            get_admin_keyboard()
+        )
+        return
+    
+    elif data == 'set_small':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        if engine:
+            engine.images['SMALL'] = '🔴'
+        await answer_callback(callback_id, "✅ SMALL ইমেজ সেট করা হয়েছে!")
+        await edit_message_text(
+            chat_id, message_id,
+            "✅ *SMALL ইমেজ সেট করা হয়েছে!*\n\n"
+            "বর্তমান SMALL ইমেজ: 🔴",
+            get_admin_keyboard()
+        )
+        return
+    
+    elif data == 'set_win':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        if engine:
+            engine.images['WIN'] = '🏆'
+        await answer_callback(callback_id, "✅ WIN ইমেজ সেট করা হয়েছে!")
+        await edit_message_text(
+            chat_id, message_id,
+            "✅ *WIN ইমেজ সেট করা হয়েছে!*\n\n"
+            "বর্তমান WIN ইমেজ: 🏆",
+            get_admin_keyboard()
+        )
+        return
+    
+    elif data == 'set_loss':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        if engine:
+            engine.images['LOSS'] = '💔'
+        await answer_callback(callback_id, "✅ LOSS ইমেজ সেট করা হয়েছে!")
+        await edit_message_text(
+            chat_id, message_id,
+            "✅ *LOSS ইমেজ সেট করা হয়েছে!*\n\n"
+            "বর্তমান LOSS ইমেজ: 💔",
+            get_admin_keyboard()
+        )
+        return
+    
+    elif data == 'admin_stats':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        stats = f"""
+📊 *এডমিন - স্ট্যাটাস*
+━━━━━━━━━━━━━━━━━━━
+
+• মোট ট্রেড: {engine.total_trade if engine else 0}
+• 🏆 উইন: {engine.win_count if engine else 0}
+• 💔 লস: {engine.loss_count if engine else 0}
+• 🎯 একুরেসি: {engine.accuracy if engine else 0}%
+• 📡 স্ট্যাটাস: {'🟢 চলমান' if is_running else '🔴 বন্ধ'}
+
+🖼️ *ইমেজ কনফিগারেশন:*
+• BIG: {engine.images.get('BIG', '🟢') if engine else '🟢'}
+• SMALL: {engine.images.get('SMALL', '🔴') if engine else '🔴'}
+• WIN: {engine.images.get('WIN', '🏆') if engine else '🏆'}
+• LOSS: {engine.images.get('LOSS', '💔') if engine else '💔'}
+        """
+        await edit_message_text(chat_id, message_id, stats, get_admin_keyboard())
+        await answer_callback(callback_id, "📊 স্ট্যাটাস দেখানো হচ্ছে")
+        return
+    
+    elif data == 'back_to_main':
+        if not is_admin:
+            await answer_callback(callback_id, "⛔ এডমিন প্যানেল নয়!")
+            return
+        status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
+        msg = f"""
+🤖 *MASUD AI - রিয়েল প্রেডিক্টর*
+━━━━━━━━━━━━━━━━━━━━━━
+
+📊 *স্ট্যাটাস:* {status}
+🏆 *উইন:* {engine.win_count if engine else 0}
+💔 *লস:* {engine.loss_count if engine else 0}
+📈 *ট্রেড:* {engine.total_trade if engine else 0}
+🎯 *একুরেসি:* {engine.accuracy if engine else 0}%
+
+💡 নিচের বাটন ব্যবহার করুন
+        """
+        await edit_message_text(chat_id, message_id, msg, get_start_keyboard())
+        await answer_callback(callback_id, "🔙 মেইন মেনুতে ফিরে গেলাম")
+        return
+    
+    # ============================================================
+    # রেগুলার কমান্ড
+    # ============================================================
     if data == "start_signal":
         if not is_running:
             is_running = True
             asyncio.create_task(signal_loop())
             await answer_callback(callback_id, "✅ সিগন্যাল চালু হয়েছে!")
-            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু! ২৫টি অ্যালগরিদম সক্রিয়।")
+            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে! প্রতি ৩০ সেকেন্ডে আপডেট আসবে।")
         else:
             await answer_callback(callback_id, "⚠️ সিগন্যাল ইতিমধ্যে চালু আছে!")
     
@@ -1003,8 +988,8 @@ async def handle_callback(callback):
             bar = get_confidence_bar(p['confidence'])
             dots = get_history_dots(p.get('history', []))
             
-            votes = p.get('votes', {})
-            votes_info = f"🗳️ ভোট: BIG {votes.get('BIG', 0)} | SMALL {votes.get('SMALL', 0)}"
+            scores = p.get('scores', {})
+            scores_info = f"🗳️ স্কোর: BIG {scores.get('BIG', 0)} | SMALL {scores.get('SMALL', 0)}"
             
             signal = f"""
 📡 *লাইভ সিগন্যাল*
@@ -1017,7 +1002,7 @@ async def handle_callback(callback):
 📈 *ট্রেন্ড অ্যানালাইসিস:*
 • লাস্ট ১০: {dots}
 • BIG: {p.get('big_count', 0)} | SMALL: {p.get('small_count', 0)}
-{votes_info}
+{scores_info}
 
 ⏱️ সময়: {p['timestamp']}
 ━━━━━━━━━━━━━━━━━━━
@@ -1026,6 +1011,19 @@ async def handle_callback(callback):
             await edit_message_text(chat_id, message_id, signal)
         else:
             await answer_callback(callback_id, "⏳ কোনো সিগন্যাল নেই")
+    
+    elif data == "trade_history":
+        if not engine or not engine.trade_history:
+            await answer_callback(callback_id, "❌ কোনো ট্রেড নেই")
+            return
+        
+        history = "📈 *ট্রেড হিস্টরি*\n━━━━━━━━━━━━━━━━━━━\n"
+        for i, t in enumerate(engine.trade_history[-10:], 1):
+            icon = "✅" if t['result'] == "Win" else "❌"
+            history += f"{i}. {icon} {t['prediction']} → {t['actual']} ({t['number']})\n"
+        
+        await answer_callback(callback_id, "📈 ট্রেড হিস্টরি দেখানো হচ্ছে...")
+        await edit_message_text(chat_id, message_id, history)
 
 # ============================================================
 # মেইন লুপ
@@ -1065,9 +1063,8 @@ async def start_bot():
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
     logger.info(f"📢 Chat ID: {CHAT_ID}")
     logger.info("=" * 60)
-    logger.info("🧠 25 ALGORITHMS ACTIVE")
-    logger.info("🗳️ VOTING SYSTEM ACTIVE")
-    logger.info("🔄 PERIOD SYNC: AUTO +1 FIXED")
+    logger.info("🔐 ADMIN PANEL: /admin")
+    logger.info("🔑 PASSWORD: msxmasud20")
     logger.info("=" * 60)
     
     engine = PredictionEngine()
@@ -1082,8 +1079,8 @@ async def start_bot():
     logger.info("✅ Bot is ready and running!")
     print("\n" + "=" * 60)
     print("  ✅ MASUD AI BOT IS NOW RUNNING!")
-    print("  🧠 25 ALGORITHMS ACTIVE")
-    print("  🗳️ VOTING SYSTEM ACTIVE")
+    print("  🔐 ADMIN PANEL: /admin")
+    print("  🔑 PASSWORD: msxmasud20")
     print("  📡 Waiting for signals...")
     print("=" * 60 + "\n")
     
