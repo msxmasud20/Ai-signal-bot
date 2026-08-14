@@ -44,7 +44,7 @@ def print_banner():
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
 ║         🤖 MASUD AI - PREMIUM PREDICTION BOT                ║
-║         🚀 VERSION 3.0 - FIXED SIGNAL ISSUE                 ║
+║         🚀 VERSION 4.0 - FIXED API CONNECTION               ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
@@ -135,9 +135,25 @@ async def edit_message_text(chat_id, message_id, text, keyboard=None):
         return False
 
 # ============================================================
-# কনফিগারেশন
+# API কনফিগারেশন - ফিক্সড হেডার সহ
 # ============================================================
 API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageNo=1&pageSize=10"
+
+# সঠিক হেডার - আপনার HTML ফাইলের মতো
+API_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.9,bn;q=0.8',
+    'Connection': 'keep-alive',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'Referer': 'https://draw.ar-lottery01.com/',
+    'Origin': 'https://draw.ar-lottery01.com',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+}
 
 # ============================================================
 # গ্লোবাল ভেরিয়েবল
@@ -168,24 +184,18 @@ class PredictionEngine:
         self.consecutive_big = 0
         self.consecutive_small = 0
 
-    # ============================================================
-    # আপনার HTML ফাইলের অ্যালগরিদম - হুবহু অনুকরণ
-    # ============================================================
     def analyze_trend(self, numbers):
-        """আপনার ফাইলের analyzeTrend ফাংশনের মতো"""
+        """আপনার HTML ফাইলের analyzeTrend ফাংশনের মতো"""
         if not numbers or len(numbers) < 3:
             return {'trend': 'neutral', 'confidence': 50}
         
-        # BIG/SMALL কাউন্ট
         bigs = sum(1 for n in numbers if n >= 5)
         smalls = len(numbers) - bigs
         
-        # কনসিকিউটিভ প্যাটার্ন চেক
         last_three = numbers[-3:] if len(numbers) >= 3 else numbers
         all_big = all(n >= 5 for n in last_three)
         all_small = all(n < 5 for n in last_three)
         
-        # অল্টারনেটিং প্যাটার্ন
         alternating = True
         if len(last_three) >= 3:
             for i in range(1, len(last_three)):
@@ -193,11 +203,9 @@ class PredictionEngine:
                     alternating = False
                     break
         
-        # কনফিডেন্স ক্যালকুলেশন
         big_ratio = bigs / len(numbers) if len(numbers) > 0 else 0
         confidence = min(95, round((abs(big_ratio - 0.5) * 2) * 100))
         
-        # ট্রেন্ড ডিটেকশন - আপনার ফাইলের মতো
         trend = 'neutral'
         if big_ratio > 0.6:
             trend = 'BIG'
@@ -210,7 +218,6 @@ class PredictionEngine:
             trend = 'SMALL'
             confidence = min(95, confidence + 10)
         elif alternating and len(last_three) >= 3:
-            # অল্টারনেটিং হলে আগের ট্রেন্ড অনুসরণ
             last = last_three[-1]
             trend = 'SMALL' if last >= 5 else 'BIG'
             confidence = min(90, confidence + 10)
@@ -218,7 +225,7 @@ class PredictionEngine:
         return {'trend': trend, 'confidence': max(55, confidence)}
 
     def predict_next(self, numbers):
-        """আপনার ফাইলের predictNextNumber ফাংশনের মতো"""
+        """আপনার HTML ফাইলের predictNextNumber ফাংশনের মতো"""
         if not numbers:
             num = random.randint(0, 9)
             return {
@@ -227,11 +234,9 @@ class PredictionEngine:
                 'confidence': 60
             }
         
-        # ট্রেন্ড অ্যানালাইসিস
         analysis = self.analyze_trend(numbers)
         confidence = analysis['confidence']
         
-        # স্মার্ট প্রেডিক্ট - আপনার ফাইলের মতো
         if analysis['trend'] == 'BIG':
             predicted_num = random.randint(5, 9)
             confidence = min(95, confidence + 5)
@@ -239,7 +244,6 @@ class PredictionEngine:
             predicted_num = random.randint(0, 4)
             confidence = min(95, confidence + 5)
         else:
-            # নিউট্রাল - ডিস্ট্রিবিউশন অনুযায়ী
             avg = sum(numbers) / len(numbers) if numbers else 0
             if avg > 4.5:
                 predicted_num = random.randint(4, 9)
@@ -248,7 +252,6 @@ class PredictionEngine:
                 predicted_num = random.randint(0, 5)
                 confidence = 65
         
-        # ৫% চান্স রিভার্স - আপনার ফাইলের মতো
         if random.random() < 0.05 and len(numbers) > 5:
             predicted_num = random.randint(0, 4) if predicted_num >= 5 else random.randint(5, 9)
             confidence = max(50, confidence - 10)
@@ -260,22 +263,32 @@ class PredictionEngine:
         }
 
     async def fetch_data(self):
-        """API থেকে ডাটা সংগ্রহ - আপনার ফাইলের মতো"""
+        """API থেকে ডাটা সংগ্রহ - ফিক্সড হেডার সহ"""
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json'
-            }
+            logger.info("📡 Attempting to fetch data from API...")
+            
+            # কুকি সহ সেশন তৈরি
             async with aiohttp.ClientSession() as session:
-                async with session.get(API_URL, headers=headers, timeout=15) as response:
+                async with session.get(
+                    API_URL, 
+                    headers=API_HEADERS, 
+                    timeout=15,
+                    allow_redirects=True
+                ) as response:
                     logger.info(f"📡 API Response Status: {response.status}")
                     
                     if response.status == 200:
                         try:
-                            data = await response.json()
-                            logger.info(f"📊 API Data: {json.dumps(data, indent=2)[:500]}")
+                            # টেক্সট হিসেবে পড়ে তারপর JSON পার্স
+                            text = await response.text()
+                            logger.info(f"📄 Response text: {text[:200]}...")
+                            
+                            # JSON পার্স
+                            data = json.loads(text)
+                            logger.info("✅ JSON parsed successfully")
+                            
                         except Exception as e:
-                            logger.error(f"JSON parse error: {e}")
+                            logger.error(f"❌ JSON parse error: {e}")
                             return None
                             
                         if data and data.get('data') and data['data'].get('list'):
@@ -293,14 +306,12 @@ class PredictionEngine:
                             if numbers:
                                 latest_issue = items[0].get('issueNumber', '')
                                 logger.info(f"📌 Latest Issue: {latest_issue}")
-                                logger.info(f"📌 Last Issue: {self.last_issue}")
                                 
                                 if latest_issue != self.last_issue:
                                     self.last_issue = latest_issue
                                     self.history = numbers[:30]
                                     self.last_10_numbers = numbers[:10]
                                     
-                                    # BIG/SMALL কাউন্ট আপডেট
                                     self.big_count = sum(1 for n in self.last_10_numbers if n >= 5)
                                     self.small_count = len(self.last_10_numbers) - self.big_count
                                     
@@ -317,7 +328,6 @@ class PredictionEngine:
                                                 break
                                             self.consecutive_small += 1
                                     
-                                    # প্রেডিক্ট করুন
                                     prediction = self.predict_next(self.history)
                                     
                                     self.current_prediction = {
@@ -337,11 +347,27 @@ class PredictionEngine:
                                     return self.current_prediction
                                 else:
                                     logger.info("⏳ No new issue, waiting...")
+                        else:
+                            logger.warning("⚠️ No 'list' in response data")
                     else:
-                        logger.warning(f"API status: {response.status}")
+                        logger.warning(f"⚠️ API status: {response.status}")
+                        # Try to read error response
+                        try:
+                            error_text = await response.text()
+                            logger.warning(f"⚠️ Error response: {error_text[:200]}")
+                        except:
+                            pass
+                    
                     return None
+                    
+        except asyncio.TimeoutError:
+            logger.error("❌ API timeout")
+            return None
+        except aiohttp.ClientError as e:
+            logger.error(f"❌ Client error: {e}")
+            return None
         except Exception as e:
-            logger.error(f"API Error: {e}")
+            logger.error(f"❌ API Error: {e}")
             return None
 
 # ============================================================
@@ -387,7 +413,6 @@ def get_start_keyboard():
 # সিগন্যাল ফাংশন
 # ============================================================
 async def send_signal(prediction):
-    """আপনার HTML ফাইলের মতো স্টাইলে সিগন্যাল পাঠায়"""
     global engine, signal_count
     
     if not prediction or not engine:
@@ -401,7 +426,6 @@ async def send_signal(prediction):
     dots = get_history_dots(prediction.get('history', []))
     bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴"
     
-    # আপনার HTML ফাইলের মতো স্টাইল
     msg = f"""
 🎯 *MASUD AI - রিয়েল প্রেডিক্ট*
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -480,7 +504,7 @@ async def check_result(prediction, actual_number):
     await send_telegram_message(msg)
 
 # ============================================================
-# সিগন্যাল লুপ - ফিক্সড
+# সিগন্যাল লুপ
 # ============================================================
 async def signal_loop():
     global is_running, last_signal, last_period, engine, signal_count
@@ -499,7 +523,6 @@ async def signal_loop():
                     if prediction['period'] != last_period:
                         logger.info(f"🆕 New period detected: {prediction['period']}")
                         
-                        # আগের ট্রেডের রেজাল্ট চেক
                         if last_period and last_signal:
                             if engine.history:
                                 real_num = engine.history[0] if engine.history else None
@@ -507,11 +530,9 @@ async def signal_loop():
                                     logger.info(f"📊 Checking result for period {last_period}")
                                     await check_result(last_signal, real_num)
                         
-                        # নতুন সিগন্যাল
                         last_period = prediction['period']
                         last_signal = prediction
                         
-                        # সিগন্যাল পাঠান
                         logger.info(f"📤 Sending signal for period {prediction['period']}")
                         await send_signal(prediction)
                     else:
