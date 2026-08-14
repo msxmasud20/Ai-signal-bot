@@ -5,6 +5,7 @@ import json
 import random
 import logging
 from datetime import datetime, timedelta
+from collections import Counter
 
 # ============================================================
 # লগিং সেটআপ
@@ -43,8 +44,8 @@ def print_banner():
 ║   ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║             ║
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
-║         🤖 MASUD AI - SMART PREDICTION BOT                  ║
-║         🚀 VERSION 6.0 - MULTI-FACTOR ALGORITHM            ║
+║      🤖 MASUD AI - 25 ALGORITHM PREDICTION BOT             ║
+║      🚀 VERSION 7.0 - VOTING SYSTEM ACTIVE                 ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
@@ -165,7 +166,7 @@ offset = None
 signal_count = 0
 
 # ============================================================
-# 🧠 স্মার্ট প্রেডিকশন ইঞ্জিন - মাল্টি-ফ্যাক্টর অ্যালগরিদম
+# 🧠 ২৫টি স্মার্ট অ্যালগরিদম
 # ============================================================
 class PredictionEngine:
     def __init__(self):
@@ -183,200 +184,390 @@ class PredictionEngine:
         self.consecutive_big = 0
         self.consecutive_small = 0
         self.alternating_count = 0
+        self.algorithm_votes = {'BIG': 0, 'SMALL': 0}
+        self.winning_algorithms = []
 
     # ============================================================
-    # 📊 ফ্যাক্টর ১: ট্রেন্ড অ্যানালাইসিস (৬০% ওয়েট)
+    # অ্যালগরিদম ১-৫: ট্রেন্ড বেইজড
     # ============================================================
-    def analyze_trend(self, numbers):
-        """ট্রেন্ড বিশ্লেষণ - BIG/SMALL রেশিও"""
-        if not numbers or len(numbers) < 5:
-            return {'trend': 'neutral', 'score': 0, 'confidence': 50}
-        
+    def alg_trend_60(self, numbers):
+        """ট্রেন্ড ৬০% - ৬০% এর বেশি BIG/SMALL হলে"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
         bigs = sum(1 for n in numbers if n >= 5)
-        smalls = len(numbers) - bigs
-        
-        # রেশিও ক্যালকুলেশন
-        big_ratio = bigs / len(numbers) if len(numbers) > 0 else 0
-        
-        # ট্রেন্ড ডিটেকশন
-        if big_ratio >= 0.65:
-            return {'trend': 'BIG', 'score': 60, 'confidence': 85}
-        elif big_ratio <= 0.35:
-            return {'trend': 'SMALL', 'score': 60, 'confidence': 85}
-        elif big_ratio >= 0.55:
-            return {'trend': 'BIG', 'score': 40, 'confidence': 70}
-        elif big_ratio <= 0.45:
-            return {'trend': 'SMALL', 'score': 40, 'confidence': 70}
-        else:
-            return {'trend': 'neutral', 'score': 0, 'confidence': 50}
+        ratio = bigs / len(numbers)
+        if ratio >= 0.60:
+            return {'signal': 'BIG', 'confidence': 75}
+        elif ratio <= 0.40:
+            return {'signal': 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_trend_70(self, numbers):
+        """ট্রেন্ড ৭০% - ৭০% এর বেশি BIG/SMALL হলে"""
+        if len(numbers) < 8:
+            return {'signal': None, 'confidence': 0}
+        bigs = sum(1 for n in numbers if n >= 5)
+        ratio = bigs / len(numbers)
+        if ratio >= 0.70:
+            return {'signal': 'SMALL', 'confidence': 85}  # রিভার্স
+        elif ratio <= 0.30:
+            return {'signal': 'BIG', 'confidence': 85}   # রিভার্স
+        return {'signal': None, 'confidence': 0}
+
+    def alg_trend_reverse(self, numbers):
+        """ট্রেন্ড রিভার্স - বেশি সাইডের উল্টোটা"""
+        if len(numbers) < 6:
+            return {'signal': None, 'confidence': 0}
+        bigs = sum(1 for n in numbers[-6:] if n >= 5)
+        if bigs >= 4:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif bigs <= 2:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_moving_average(self, numbers):
+        """মুভিং এভারেজ - গড়ের ভিত্তিতে"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        avg = sum(numbers[-5:]) / 5
+        if avg > 5.5:
+            return {'signal': 'SMALL', 'confidence': 65}
+        elif avg < 4.5:
+            return {'signal': 'BIG', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_weighted_trend(self, numbers):
+        """ওয়েটেড ট্রেন্ড - নতুন সংখ্যা বেশি ওয়েট"""
+        if len(numbers) < 8:
+            return {'signal': None, 'confidence': 0}
+        weights = [1, 2, 3, 4, 5]  # নতুনদের বেশি ওয়েট
+        last_5 = numbers[-5:]
+        weighted_sum = sum(n * w for n, w in zip(last_5, weights))
+        avg = weighted_sum / sum(weights)
+        if avg > 5.5:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif avg < 4.5:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
 
     # ============================================================
-    # 🔄 ফ্যাক্টর ২: কনসিকিউটিভ প্যাটার্ন (২৫% ওয়েট)
+    # অ্যালগরিদম ৬-১০: কনসিকিউটিভ বেইজড
     # ============================================================
-    def analyze_consecutive(self, numbers):
-        """কনসিকিউটিভ প্যাটার্ন বিশ্লেষণ"""
-        if not numbers or len(numbers) < 3:
-            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
-        
-        last_three = numbers[-3:]
-        all_big = all(n >= 5 for n in last_three)
-        all_small = all(n < 5 for n in last_three)
-        
-        # কনসিকিউটিভ কাউন্ট
-        consecutive_big = 0
-        consecutive_small = 0
-        for n in reversed(numbers):
-            if n >= 5:
-                if consecutive_small > 0:
-                    break
-                consecutive_big += 1
-            else:
-                if consecutive_big > 0:
-                    break
-                consecutive_small += 1
-        
-        # সিদ্ধান্ত
-        if consecutive_big >= 3:
-            return {'trend': 'SMALL', 'score': 25, 'confidence': 80}  # রিভার্স
-        elif consecutive_small >= 3:
-            return {'trend': 'BIG', 'score': 25, 'confidence': 80}   # রিভার্স
-        elif consecutive_big >= 2:
-            return {'trend': 'SMALL', 'score': 15, 'confidence': 65}
-        elif consecutive_small >= 2:
-            return {'trend': 'BIG', 'score': 15, 'confidence': 65}
-        else:
-            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
+    def alg_consecutive_3(self, numbers):
+        """৩টা কনসিকিউটিভ - রিভার্স"""
+        if len(numbers) < 3:
+            return {'signal': None, 'confidence': 0}
+        last_3 = numbers[-3:]
+        if all(n >= 5 for n in last_3):
+            return {'signal': 'SMALL', 'confidence': 80}
+        elif all(n < 5 for n in last_3):
+            return {'signal': 'BIG', 'confidence': 80}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_4(self, numbers):
+        """৪টা কনসিকিউটিভ - স্ট্রং রিভার্স"""
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all(n >= 5 for n in last_4):
+            return {'signal': 'SMALL', 'confidence': 90}
+        elif all(n < 5 for n in last_4):
+            return {'signal': 'BIG', 'confidence': 90}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_5(self, numbers):
+        """৫টা কনসিকিউটিভ - খুব স্ট্রং রিভার্স"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        if all(n >= 5 for n in last_5):
+            return {'signal': 'SMALL', 'confidence': 95}
+        elif all(n < 5 for n in last_5):
+            return {'signal': 'BIG', 'confidence': 95}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_break(self, numbers):
+        """কনসিকিউটিভ ব্রেক - কখন ব্রেক হবে"""
+        if len(numbers) < 3:
+            return {'signal': None, 'confidence': 0}
+        last_2 = numbers[-2:]
+        if (last_2[0] >= 5) != (last_2[1] >= 5):
+            # ব্রেক হয়েছে, নতুন ট্রেন্ড ফলো
+            return {'signal': 'BIG' if last_2[1] >= 5 else 'SMALL', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_alternate(self, numbers):
+        """কনসিকিউটিভ অল্টারনেট"""
+        if len(numbers) < 6:
+            return {'signal': None, 'confidence': 0}
+        last_6 = numbers[-6:]
+        pattern = [1 if n >= 5 else 0 for n in last_6]
+        # ১,০,১,০,১,০ প্যাটার্ন চেক
+        if pattern == [1, 0, 1, 0, 1, 0]:
+            return {'signal': 'BIG', 'confidence': 75}
+        elif pattern == [0, 1, 0, 1, 0, 1]:
+            return {'signal': 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
 
     # ============================================================
-    # 🔀 ফ্যাক্টর ৩: অল্টারনেটিং প্যাটার্ন (১৫% ওয়েট)
+    # অ্যালগরিদম ১১-১৫: অল্টারনেটিং বেইজড
     # ============================================================
-    def analyze_alternating(self, numbers):
-        """অল্টারনেটিং প্যাটার্ন বিশ্লেষণ"""
-        if not numbers or len(numbers) < 4:
-            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
-        
-        last_four = numbers[-4:]
-        alternating = True
-        for i in range(1, len(last_four)):
-            if (last_four[i-1] >= 5) == (last_four[i] >= 5):
-                alternating = False
-                break
-        
-        if alternating:
-            # অল্টারনেটিং হলে শেষ সংখ্যার উল্টোটা
-            last = last_four[-1]
-            if last >= 5:
-                return {'trend': 'SMALL', 'score': 15, 'confidence': 70}
-            else:
-                return {'trend': 'BIG', 'score': 15, 'confidence': 70}
-        else:
-            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
+    def alg_alternating_3(self, numbers):
+        """৩টা অল্টারনেটিং"""
+        if len(numbers) < 3:
+            return {'signal': None, 'confidence': 0}
+        last_3 = numbers[-3:]
+        if (last_3[0] >= 5) != (last_3[1] >= 5) and (last_3[1] >= 5) != (last_3[2] >= 5):
+            return {'signal': 'BIG' if last_3[-1] < 5 else 'SMALL', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_4(self, numbers):
+        """৪টা অল্টারনেটিং"""
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all((last_4[i] >= 5) != (last_4[i+1] >= 5) for i in range(3)):
+            return {'signal': 'BIG' if last_4[-1] < 5 else 'SMALL', 'confidence': 80}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_5(self, numbers):
+        """৫টা অল্টারনেটিং"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        if all((last_5[i] >= 5) != (last_5[i+1] >= 5) for i in range(4)):
+            return {'signal': 'BIG' if last_5[-1] < 5 else 'SMALL', 'confidence': 90}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_break(self, numbers):
+        """অল্টারনেটিং ব্রেক"""
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all((last_4[i] >= 5) == (last_4[i+1] >= 5) for i in range(3)):
+            # অল্টারনেটিং ব্রেক হয়েছে
+            return {'signal': 'BIG' if last_4[-1] >= 5 else 'SMALL', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_reverse(self, numbers):
+        """অল্টারনেটিং রিভার্স"""
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all((last_4[i] >= 5) != (last_4[i+1] >= 5) for i in range(3)):
+            return {'signal': 'BIG' if last_4[-1] >= 5 else 'SMALL', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
 
     # ============================================================
-    # 🎯 মেইন প্রেডিক্ট ফাংশন - ৩ ফ্যাক্টর কম্বাইন
+    # অ্যালগরিদম ১৬-২০: স্পেশাল প্যাটার্ন
     # ============================================================
-    def smart_predict(self, numbers):
-        """
-        মাল্টি-ফ্যাক্টর স্মার্ট প্রেডিক্ট
-        - ট্রেন্ড (৬০%)
-        - কনসিকিউটিভ (২৫%)
-        - অল্টারনেটিং (১৫%)
-        """
-        if not numbers or len(numbers) < 5:
-            # পর্যাপ্ত ডাটা না থাকলে র্যান্ডম
-            num = random.randint(0, 9)
+    def alg_double_big(self, numbers):
+        """ডাবল বিগ - ২টা BIG পরপর"""
+        if len(numbers) < 2:
+            return {'signal': None, 'confidence': 0}
+        if numbers[-1] >= 5 and numbers[-2] >= 5:
+            return {'signal': 'SMALL', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_double_small(self, numbers):
+        """ডাবল স্মল - ২টা SMALL পরপর"""
+        if len(numbers) < 2:
+            return {'signal': None, 'confidence': 0}
+        if numbers[-1] < 5 and numbers[-2] < 5:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_fibonacci(self, numbers):
+        """ফিবোনাচি প্যাটার্ন"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        # BIG/SMALL প্যাটার্ন চেক
+        pattern = [1 if n >= 5 else 0 for n in last_5]
+        if pattern == [1, 0, 1, 1, 0]:
+            return {'signal': 'BIG', 'confidence': 75}
+        elif pattern == [0, 1, 0, 0, 1]:
+            return {'signal': 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_zigzag(self, numbers):
+        """জিগজ্যাগ প্যাটার্ন"""
+        if len(numbers) < 6:
+            return {'signal': None, 'confidence': 0}
+        last_6 = numbers[-6:]
+        # HIGH-LOW-HIGH-LOW-HIGH-LOW
+        if all((last_6[i] >= 5) != (last_6[i+1] >= 5) for i in range(5)):
+            return {'signal': 'BIG' if last_6[-1] < 5 else 'SMALL', 'confidence': 80}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_momentum(self, numbers):
+        """মোমেন্টাম - উর্ধ্বমুখী/নিম্নমুখী"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        avg = sum(last_5) / 5
+        if avg > sum(numbers[-10:-5]) / 5:
+            return {'signal': 'BIG', 'confidence': 70}  # উর্ধ্বমুখী
+        elif avg < sum(numbers[-10:-5]) / 5:
+            return {'signal': 'SMALL', 'confidence': 70}  # নিম্নমুখী
+        return {'signal': None, 'confidence': 0}
+
+    # ============================================================
+    # অ্যালগরিদম ২১-২৫: অ্যাডভান্সড স্ট্রাটেজি
+    # ============================================================
+    def alg_martingale(self, numbers):
+        """মার্টিনগেল - লসের পর ডাবল"""
+        if len(self.trade_history) < 2:
+            return {'signal': None, 'confidence': 0}
+        last_trade = self.trade_history[-1]
+        if last_trade['result'] == 'Loss':
+            # লসের পর উল্টোটা
+            return {'signal': 'BIG' if last_trade['prediction'] == 'SMALL' else 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_anti_martingale(self, numbers):
+        """অ্যান্টি-মার্টিনগেল - উইনের পর ডাবল"""
+        if len(self.trade_history) < 2:
+            return {'signal': None, 'confidence': 0}
+        last_trade = self.trade_history[-1]
+        if last_trade['result'] == 'Win':
+            # উইনের পর একই
+            return {'signal': last_trade['prediction'], 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_mean_reversion(self, numbers):
+        """মিন রিভার্সন - গড়ে ফিরে আসা"""
+        if len(numbers) < 10:
+            return {'signal': None, 'confidence': 0}
+        avg = sum(numbers) / len(numbers)
+        last = numbers[-1]
+        if last > avg + 2:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif last < avg - 2:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_volatility(self, numbers):
+        """ভোলাটিলিটি - বেশি ওঠানামা"""
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        variance = sum((n - sum(last_5)/5) ** 2 for n in last_5) / 5
+        if variance > 5:
+            return {'signal': 'BIG' if last_5[-1] >= 5 else 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_smart_vote(self, numbers):
+        """স্মার্ট ভোট - সব অ্যালগরিদমের ভোট"""
+        return self.get_voting_result(numbers)
+
+    # ============================================================
+    # 🗳️ ভোটিং সিস্টেম - সব অ্যালগরিদমের ভোট নেয়
+    # ============================================================
+    def get_voting_result(self, numbers):
+        """২৫টি অ্যালগরিদমের ভোট নেয়"""
+        algorithms = [
+            self.alg_trend_60,
+            self.alg_trend_70,
+            self.alg_trend_reverse,
+            self.alg_moving_average,
+            self.alg_weighted_trend,
+            self.alg_consecutive_3,
+            self.alg_consecutive_4,
+            self.alg_consecutive_5,
+            self.alg_consecutive_break,
+            self.alg_consecutive_alternate,
+            self.alg_alternating_3,
+            self.alg_alternating_4,
+            self.alg_alternating_5,
+            self.alg_alternating_break,
+            self.alg_alternating_reverse,
+            self.alg_double_big,
+            self.alg_double_small,
+            self.alg_fibonacci,
+            self.alg_zigzag,
+            self.alg_momentum,
+            self.alg_martingale,
+            self.alg_anti_martingale,
+            self.alg_mean_reversion,
+            self.alg_volatility,
+        ]
+        
+        votes = {'BIG': 0, 'SMALL': 0, 'WAIT': 0}
+        algo_results = []
+        confidence_sum = 0
+        confidence_count = 0
+        
+        for algo in algorithms:
+            try:
+                result = algo(numbers)
+                if result and result.get('signal'):
+                    votes[result['signal']] += 1
+                    confidence_sum += result.get('confidence', 50)
+                    confidence_count += 1
+                    algo_results.append(f"{algo.__name__}: {result['signal']} ({result.get('confidence', 0)}%)")
+            except:
+                continue
+        
+        # ভোটের ভিত্তিতে সিদ্ধান্ত
+        if votes['BIG'] > votes['SMALL'] and votes['BIG'] >= 3:
+            avg_confidence = int(confidence_sum / confidence_count) if confidence_count > 0 else 60
             return {
-                'number': num,
-                'bs': 'BIG' if num >= 5 else 'SMALL',
-                'confidence': 50,
-                'signal': 'WAIT',
-                'reason': 'Insufficient data'
+                'signal': 'BIG',
+                'confidence': min(95, avg_confidence + 5),
+                'votes': votes,
+                'algorithms': algo_results[:5]  # টপ ৫ দেখায়
             }
-        
-        # ৩টি ফ্যাক্টর অ্যানালাইসিস
-        trend_result = self.analyze_trend(numbers)
-        consecutive_result = self.analyze_consecutive(numbers)
-        alternating_result = self.analyze_alternating(numbers)
-        
-        # স্কোর যোগ করা
-        scores = {'BIG': 0, 'SMALL': 0, 'neutral': 0}
-        confidence = 0
-        
-        # ফ্যাক্টর ১: ট্রেন্ড (৬০%)
-        if trend_result['trend'] == 'BIG':
-            scores['BIG'] += 60
-            confidence += trend_result['confidence'] * 0.6
-        elif trend_result['trend'] == 'SMALL':
-            scores['SMALL'] += 60
-            confidence += trend_result['confidence'] * 0.6
+        elif votes['SMALL'] > votes['BIG'] and votes['SMALL'] >= 3:
+            avg_confidence = int(confidence_sum / confidence_count) if confidence_count > 0 else 60
+            return {
+                'signal': 'SMALL',
+                'confidence': min(95, avg_confidence + 5),
+                'votes': votes,
+                'algorithms': algo_results[:5]
+            }
         else:
-            scores['neutral'] += 60
-        
-        # ফ্যাক্টর ২: কনসিকিউটিভ (২৫%)
-        if consecutive_result['trend'] == 'BIG':
-            scores['BIG'] += 25
-            confidence += consecutive_result['confidence'] * 0.25
-        elif consecutive_result['trend'] == 'SMALL':
-            scores['SMALL'] += 25
-            confidence += consecutive_result['confidence'] * 0.25
-        else:
-            scores['neutral'] += 25
-        
-        # ফ্যাক্টর ৩: অল্টারনেটিং (১৫%)
-        if alternating_result['trend'] == 'BIG':
-            scores['BIG'] += 15
-            confidence += alternating_result['confidence'] * 0.15
-        elif alternating_result['trend'] == 'SMALL':
-            scores['SMALL'] += 15
-            confidence += alternating_result['confidence'] * 0.15
-        else:
-            scores['neutral'] += 15
-        
-        # ফাইনাল ডিসিশন
-        if scores['BIG'] > scores['SMALL'] and scores['BIG'] > 40:
-            predicted = 'BIG'
-            num = random.randint(5, 9)
-            conf = round(confidence / 100 * 100) if confidence > 0 else 60
-            reason = f"BIG (Score: {scores['BIG']})"
-        elif scores['SMALL'] > scores['BIG'] and scores['SMALL'] > 40:
-            predicted = 'SMALL'
-            num = random.randint(0, 4)
-            conf = round(confidence / 100 * 100) if confidence > 0 else 60
-            reason = f"SMALL (Score: {scores['SMALL']})"
-        else:
-            # কনফিউজড - WAIT
-            num = random.randint(0, 9)
-            predicted = 'WAIT'
-            conf = 0
-            reason = f"WAIT (BIG:{scores['BIG']}, SMALL:{scores['SMALL']})"
-        
-        return {
-            'number': num,
-            'bs': predicted,
-            'confidence': min(95, max(50, conf)),
-            'signal': predicted,
-            'reason': reason,
-            'scores': scores
-        }
+            return {
+                'signal': 'WAIT',
+                'confidence': 0,
+                'votes': votes,
+                'algorithms': ['No clear signal']
+            }
 
     # ============================================================
-    # 📡 পিরিয়ড সিঙ্ক ফাংশন
+    # 📡 পিরিয়ড সিঙ্ক - সম্পূর্ণ ফিক্স
     # ============================================================
     def get_current_win_go_period(self):
-        """উইংগোর বর্তমান পিরিয়ড ক্যালকুলেট করে"""
+        """উইংগোর বর্তমান পিরিয়ড ক্যালকুলেট - অটো +১"""
         now = datetime.now()
         base = datetime(2024, 1, 1, 0, 0, 0)
         seconds_diff = int((now - base).total_seconds())
-        period_number = seconds_diff // 30
+        period_number = (seconds_diff // 30) + 1  # +১ যোগ করা হয়েছে
         base_period = 728000
         current_period = base_period + period_number
         return str(current_period)
+
+    def sync_period(self, api_period, win_go_period):
+        """পিরিয়ড সিঙ্ক - অটো +১ যদি প্রয়োজন হয়"""
+        try:
+            api_int = int(api_period)
+            win_go_int = int(win_go_period)
+            diff = win_go_int - api_int
+            
+            if diff == 1:
+                return win_go_period  # WinGo period ব্যবহার
+            elif diff == 0:
+                return api_period  # সিঙ্ক
+            else:
+                # বড় পার্থক্য - API + 1
+                return str(api_int + 1)
+        except:
+            return api_period
 
     # ============================================================
     # 📊 API ডাটা ফেচ
     # ============================================================
     async def fetch_data(self):
-        """API থেকে ডাটা সংগ্রহ - পিরিয়ড সিঙ্ক সহ"""
         try:
             logger.info("📡 Fetching data from API...")
             
@@ -411,25 +602,10 @@ class PredictionEngine:
                             if numbers:
                                 api_latest_issue = items[0].get('issueNumber', '')
                                 
-                                # পিরিয়ড সিঙ্ক
-                                try:
-                                    api_period_int = int(api_latest_issue)
-                                    win_go_period_int = int(win_go_period)
-                                    diff = win_go_period_int - api_period_int
-                                    
-                                    if diff == 1:
-                                        use_period = win_go_period
-                                        logger.info(f"🔄 Period sync: Using WinGo period {win_go_period}")
-                                    elif diff == 0:
-                                        use_period = api_latest_issue
-                                        logger.info(f"✅ Periods in sync: {api_latest_issue}")
-                                    else:
-                                        use_period = api_latest_issue
-                                        logger.info(f"⚠️ Using API period: {api_latest_issue}")
-                                except:
-                                    use_period = api_latest_issue
+                                # পিরিয়ড সিঙ্ক - অটো +১
+                                use_period = self.sync_period(api_latest_issue, win_go_period)
+                                logger.info(f"🔄 Period sync: API {api_latest_issue} → {use_period}")
                                 
-                                # নতুন পিরিয়ড চেক
                                 if use_period != self.last_issue:
                                     self.last_issue = use_period
                                     self.history = numbers[:30]
@@ -438,7 +614,6 @@ class PredictionEngine:
                                     self.big_count = sum(1 for n in self.last_10_numbers if n >= 5)
                                     self.small_count = len(self.last_10_numbers) - self.big_count
                                     
-                                    # কনসিকিউটিভ চেক
                                     self.consecutive_big = 0
                                     self.consecutive_small = 0
                                     for n in reversed(self.last_10_numbers):
@@ -451,28 +626,35 @@ class PredictionEngine:
                                                 break
                                             self.consecutive_small += 1
                                     
-                                    # 🧠 স্মার্ট প্রেডিক্ট
-                                    prediction = self.smart_predict(self.history)
+                                    # 🗳️ ভোটিং সিস্টেম প্রেডিক্ট
+                                    voting_result = self.get_voting_result(self.history)
+                                    
+                                    # নম্বর জেনারেট
+                                    if voting_result['signal'] == 'BIG':
+                                        num = random.randint(5, 9)
+                                    elif voting_result['signal'] == 'SMALL':
+                                        num = random.randint(0, 4)
+                                    else:
+                                        num = random.randint(0, 9)
                                     
                                     self.current_prediction = {
                                         'period': use_period,
-                                        'prediction': prediction['bs'],
-                                        'number': prediction['number'],
-                                        'confidence': prediction['confidence'],
+                                        'prediction': voting_result['signal'],
+                                        'number': num,
+                                        'confidence': voting_result['confidence'],
                                         'timestamp': datetime.now().strftime('%H:%M:%S'),
                                         'big_count': self.big_count,
                                         'small_count': self.small_count,
                                         'consecutive_big': self.consecutive_big,
                                         'consecutive_small': self.consecutive_small,
                                         'history': self.last_10_numbers[:10],
-                                        'reason': prediction.get('reason', ''),
-                                        'scores': prediction.get('scores', {}),
-                                        'signal': prediction.get('signal', ''),
+                                        'votes': voting_result.get('votes', {}),
+                                        'algorithms': voting_result.get('algorithms', []),
                                         'api_period': api_latest_issue,
                                         'win_go_period': win_go_period
                                     }
                                     
-                                    logger.info(f"🎯 SMART PREDICTION: {self.current_prediction}")
+                                    logger.info(f"🎯 VOTING RESULT: {voting_result}")
                                     return self.current_prediction
                     else:
                         logger.warning(f"⚠️ API status: {response.status}")
@@ -528,7 +710,6 @@ async def send_signal(prediction):
     global engine, signal_count
     
     if not prediction or not engine:
-        logger.error("❌ Cannot send signal")
         return
     
     signal_count += 1
@@ -536,13 +717,27 @@ async def send_signal(prediction):
     
     bar = get_confidence_bar(prediction['confidence'])
     dots = get_history_dots(prediction.get('history', []))
-    bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴" if prediction['prediction'] == "SMALL" else "⏳"
     
-    # স্মার্ট অ্যালগরিদম ইনফো
-    algo_info = f"\n🧠 অ্যালগরিদম: {prediction.get('reason', 'N/A')}"
-    if 'scores' in prediction and prediction['scores']:
-        scores = prediction['scores']
-        algo_info += f"\n📊 স্কোর: BIG {scores.get('BIG', 0)} | SMALL {scores.get('SMALL', 0)}"
+    # সিগন্যাল টাইপ
+    if prediction['prediction'] == 'BIG':
+        bs_emoji = "🟢"
+        signal_type = "🎯"
+    elif prediction['prediction'] == 'SMALL':
+        bs_emoji = "🔴"
+        signal_type = "🎯"
+    else:
+        bs_emoji = "⏳"
+        signal_type = "⏳"
+    
+    # ভোটিং ইনফো
+    votes = prediction.get('votes', {})
+    votes_info = f"\n🗳️ ভোট: BIG {votes.get('BIG', 0)} | SMALL {votes.get('SMALL', 0)}"
+    
+    # অ্যালগরিদম ইনফো
+    algos = prediction.get('algorithms', [])
+    algo_info = "\n🧠 অ্যালগরিদম:\n"
+    for i, algo in enumerate(algos[:5], 1):
+        algo_info += f"   {i}. {algo}\n"
     
     # পিরিয়ড সিঙ্ক ইনফো
     period_info = ""
@@ -550,16 +745,12 @@ async def send_signal(prediction):
         if prediction['api_period'] != prediction['win_go_period']:
             period_info = f"\n🔄 সিঙ্ক: {prediction['api_period']} → {prediction['win_go_period']}"
     
-    # সিগন্যাল টাইপ
-    signal_type = "🎯" if prediction['prediction'] != "WAIT" else "⏳"
-    signal_text = prediction['prediction'] if prediction['prediction'] != "WAIT" else "⏳ অপেক্ষা করুন"
-    
     msg = f"""
-{signal_type} *MASUD AI - স্মার্ট প্রেডিক্ট*
+{signal_type} *MASUD AI - ২৫ অ্যালগরিদম প্রেডিক্ট*
 ━━━━━━━━━━━━━━━━━━━━━━
 
 🔢 *পিরিয়ড:* `{prediction['period'][-6:]}`{period_info}
-🎯 *সিগন্যাল:* {bs_emoji} *{signal_text}*
+🎯 *সিগন্যাল:* {bs_emoji} *{prediction['prediction']}*
 🔢 *প্রেডিক্টেড নম্বর:* `{prediction['number'] if prediction['prediction'] != 'WAIT' else '--'}`
 📊 *কনফিডেন্স:* {prediction['confidence']}% {bar if prediction['prediction'] != 'WAIT' else '⏳'}
 
@@ -568,6 +759,7 @@ async def send_signal(prediction):
 • BIG: {prediction.get('big_count', 0)} | SMALL: {prediction.get('small_count', 0)}
 • কনসিকিউটিভ BIG: {prediction.get('consecutive_big', 0)}
 • কনসিকিউটিভ SMALL: {prediction.get('consecutive_small', 0)}
+{votes_info}
 {algo_info}
 
 📊 *পরিসংখ্যান:*
@@ -579,9 +771,8 @@ async def send_signal(prediction):
 🅿🅾🆆🅴🆁🅴🅳 🅱🆈 🅼🅰🆂🆄🅳 🅰🅸
     """
     
-    logger.info(f"📤 SENDING SIGNAL #{signal_count}: {prediction['prediction']}")
     await send_telegram_message(msg)
-    logger.info(f"✅ Signal #{signal_count} sent")
+    logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']} (Confidence: {prediction['confidence']}%)")
 
 async def check_result(prediction, actual_number):
     global engine
@@ -589,7 +780,6 @@ async def check_result(prediction, actual_number):
     if not prediction or actual_number is None or not engine:
         return
     
-    # WAIT সিগন্যালের রেজাল্ট চেক করি না
     if prediction['prediction'] == 'WAIT':
         return
     
@@ -640,9 +830,9 @@ async def check_result(prediction, actual_number):
 # সিগন্যাল লুপ
 # ============================================================
 async def signal_loop():
-    global is_running, last_signal, last_period, engine, signal_count
+    global is_running, last_signal, last_period, engine
     
-    logger.info("🔄 Signal loop started - SMART ALGORITHM ACTIVE")
+    logger.info("🔄 Signal loop started - 25 ALGORITHMS ACTIVE")
     
     while is_running:
         try:
@@ -686,7 +876,7 @@ async def handle_message(message):
     if text == '/start':
         status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
         msg = f"""
-🤖 *MASUD AI - স্মার্ট প্রেডিক্টর*
+🤖 *MASUD AI - ২৫ অ্যালগরিদম প্রেডিক্টর*
 ━━━━━━━━━━━━━━━━━━━━━━
 
 📊 *স্ট্যাটাস:* {status}
@@ -697,7 +887,8 @@ async def handle_message(message):
 
 📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers) if engine else '---'}
 
-🧠 *স্মার্ট অ্যালগরিদম:* ৩-ফ্যাক্টর সিস্টেম
+🧠 *২৫টি অ্যালগরিদম সক্রিয়*
+🗳️ *ভোটিং সিস্টেম চালু*
 💡 নিচের বাটন ব্যবহার করুন
         """
         await send_telegram_keyboard(msg, get_start_keyboard())
@@ -744,10 +935,14 @@ async def handle_message(message):
 /stats - পরিসংখ্যান দেখুন
 /help - এই মেসেজ দেখান
 
-🧠 *স্মার্ট অ্যালগরিদম:*
-• ট্রেন্ড অ্যানালাইসিস (৬০%)
-• কনসিকিউটিভ প্যাটার্ন (২৫%)
-• অল্টারনেটিং প্যাটার্ন (১৫%)
+🧠 *২৫টি অ্যালগরিদম:*
+• ট্রেন্ড বেইজড (৫টি)
+• কনসিকিউটিভ বেইজড (৫টি)
+• অল্টারনেটিং বেইজড (৫টি)
+• স্পেশাল প্যাটার্ন (৫টি)
+• অ্যাডভান্সড স্ট্রাটেজি (৫টি)
+
+🗳️ *ভোটিং সিস্টেম:* সব অ্যালগরিদমের ভোট নেয়
 
 ⚡ *পাওয়ার্ড বাই MASUD AI*
         """
@@ -770,7 +965,7 @@ async def handle_callback(callback):
             is_running = True
             asyncio.create_task(signal_loop())
             await answer_callback(callback_id, "✅ সিগন্যাল চালু হয়েছে!")
-            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে! স্মার্ট অ্যালগরিদম সক্রিয়।")
+            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু! ২৫টি অ্যালগরিদম সক্রিয়।")
         else:
             await answer_callback(callback_id, "⚠️ সিগন্যাল ইতিমধ্যে চালু আছে!")
     
@@ -808,6 +1003,9 @@ async def handle_callback(callback):
             bar = get_confidence_bar(p['confidence'])
             dots = get_history_dots(p.get('history', []))
             
+            votes = p.get('votes', {})
+            votes_info = f"🗳️ ভোট: BIG {votes.get('BIG', 0)} | SMALL {votes.get('SMALL', 0)}"
+            
             signal = f"""
 📡 *লাইভ সিগন্যাল*
 ━━━━━━━━━━━━━━━━━━━
@@ -819,8 +1017,7 @@ async def handle_callback(callback):
 📈 *ট্রেন্ড অ্যানালাইসিস:*
 • লাস্ট ১০: {dots}
 • BIG: {p.get('big_count', 0)} | SMALL: {p.get('small_count', 0)}
-
-🧠 *অ্যালগরিদম:* {p.get('reason', 'N/A')}
+{votes_info}
 
 ⏱️ সময়: {p['timestamp']}
 ━━━━━━━━━━━━━━━━━━━
@@ -868,8 +1065,9 @@ async def start_bot():
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
     logger.info(f"📢 Chat ID: {CHAT_ID}")
     logger.info("=" * 60)
-    logger.info("🧠 SMART ALGORITHM: Multi-Factor Analysis")
-    logger.info("   📊 Trend (60%) + 🔄 Consecutive (25%) + 🔀 Alternating (15%)")
+    logger.info("🧠 25 ALGORITHMS ACTIVE")
+    logger.info("🗳️ VOTING SYSTEM ACTIVE")
+    logger.info("🔄 PERIOD SYNC: AUTO +1 FIXED")
     logger.info("=" * 60)
     
     engine = PredictionEngine()
@@ -884,7 +1082,8 @@ async def start_bot():
     logger.info("✅ Bot is ready and running!")
     print("\n" + "=" * 60)
     print("  ✅ MASUD AI BOT IS NOW RUNNING!")
-    print("  🧠 SMART ALGORITHM ACTIVE")
+    print("  🧠 25 ALGORITHMS ACTIVE")
+    print("  🗳️ VOTING SYSTEM ACTIVE")
     print("  📡 Waiting for signals...")
     print("=" * 60 + "\n")
     
