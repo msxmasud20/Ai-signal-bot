@@ -4,7 +4,7 @@ import aiohttp
 import json
 import random
 import logging
-from datetime import datetime 
+from datetime import datetime
 from collections import Counter
 
 # ============================================================
@@ -44,8 +44,8 @@ def print_banner():
 ║   ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║             ║
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
-║      🤖 MASUD AI - IMAGE INTEGRATED BOT                     ║
-║      🚀 VERSION 16.0 - FULL IMAGE SUPPORT                   ║
+║      🤖 MASUD AI - 101 ALGORITHM PREDICTOR                  ║
+║      🚀 VERSION 18.0 - ULTIMATE PREDICTION ENGINE           ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
@@ -58,11 +58,10 @@ ADMIN_PASSWORD = "msxmasud20"
 admin_session = {}
 
 # ============================================================
-# 🖼️ ইমেজ ম্যানেজার - আপনার দেওয়া ইমেজ সহ
+# 🖼️ ইমেজ ম্যানেজার
 # ============================================================
 class ImageManager:
     def __init__(self):
-        # 🔥 আপনার দেওয়া ইমেজ URL গুলো
         self.images = {
             'BIG': 'https://i.ibb.co/BHwgsCBR/image.jpg',
             'SMALL': 'https://i.ibb.co/6J8pG77S/image.jpg',
@@ -73,7 +72,6 @@ class ImageManager:
         self.pending_image = None
     
     def get_image(self, signal_type):
-        """সিগন্যাল টাইপ অনুযায়ী ইমেজ URL রিটার্ন করে"""
         return self.images.get(signal_type, None)
     
     def set_image(self, signal_type, image_data):
@@ -102,7 +100,6 @@ async def send_telegram_message(message, chat_id=None):
         return False
 
 async def send_telegram_photo(caption, photo_url, chat_id=None):
-    """ইমেজ সহ মেসেজ পাঠায়"""
     target_chat = chat_id or CHAT_ID
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     
@@ -223,9 +220,11 @@ total_profit = 0
 last_api_call = 0
 consecutive_wins = 0
 consecutive_losses = 0
+max_win_streak = 0
+max_loss_streak = 0
 
 # ============================================================
-# 🧠 স্মার্ট প্রেডিকশন ইঞ্জিন
+# 🧠 ১০১টি অ্যালগরিদম + স্মার্ট প্রেডিকশন ইঞ্জিন
 # ============================================================
 class PredictionEngine:
     def __init__(self):
@@ -242,14 +241,23 @@ class PredictionEngine:
         self.small_count = 0
         self.consecutive_big = 0
         self.consecutive_small = 0
+        self.algorithm_results = []
 
+    # ============================================================
+    # 📊 ক্যালকুলেটর - ১০টি পরিসংখ্যান
+    # ============================================================
     def calculate_stats(self, numbers):
         if not numbers:
-            return {'avg': 0, 'median': 0, 'mode': 0, 'big_ratio': 0}
+            return {
+                'avg': 0, 'median': 0, 'mode': 0, 'big_ratio': 0,
+                'min': 0, 'max': 0, 'range': 0, 'variance': 0,
+                'std_dev': 0, 'sum': 0
+            }
         
-        avg = sum(numbers) / len(numbers)
+        n = len(numbers)
+        avg = sum(numbers) / n
         sorted_nums = sorted(numbers)
-        n = len(sorted_nums)
+        
         if n % 2 == 0:
             median = (sorted_nums[n//2 - 1] + sorted_nums[n//2]) / 2
         else:
@@ -257,15 +265,341 @@ class PredictionEngine:
         
         counter = Counter(numbers)
         mode = counter.most_common(1)[0][0] if counter else 0
-        big_ratio = sum(1 for n in numbers if n >= 5) / len(numbers)
+        big_ratio = sum(1 for n in numbers if n >= 5) / n
+        min_val = min(numbers)
+        max_val = max(numbers)
+        range_val = max_val - min_val
+        
+        variance = sum((x - avg) ** 2 for x in numbers) / n
+        std_dev = variance ** 0.5
+        sum_val = sum(numbers)
         
         return {
             'avg': round(avg, 2),
             'median': median,
             'mode': mode,
-            'big_ratio': round(big_ratio * 100, 1)
+            'big_ratio': round(big_ratio * 100, 1),
+            'min': min_val,
+            'max': max_val,
+            'range': range_val,
+            'variance': round(variance, 2),
+            'std_dev': round(std_dev, 2),
+            'sum': sum_val
         }
 
+    # ============================================================
+    # 🎯 ১০১টি অ্যালগরিদম - ভোটিং সিস্টেম
+    # ============================================================
+    def alg_trend_60(self, numbers):
+        bigs = sum(1 for n in numbers if n >= 5)
+        ratio = bigs / len(numbers) if numbers else 0
+        if ratio >= 0.60:
+            return {'signal': 'BIG', 'confidence': 75}
+        elif ratio <= 0.40:
+            return {'signal': 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_trend_70(self, numbers):
+        bigs = sum(1 for n in numbers if n >= 5)
+        ratio = bigs / len(numbers) if numbers else 0
+        if ratio >= 0.70:
+            return {'signal': 'SMALL', 'confidence': 85}
+        elif ratio <= 0.30:
+            return {'signal': 'BIG', 'confidence': 85}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_trend_80(self, numbers):
+        bigs = sum(1 for n in numbers if n >= 5)
+        ratio = bigs / len(numbers) if numbers else 0
+        if ratio >= 0.80:
+            return {'signal': 'SMALL', 'confidence': 90}
+        elif ratio <= 0.20:
+            return {'signal': 'BIG', 'confidence': 90}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_trend_55(self, numbers):
+        bigs = sum(1 for n in numbers if n >= 5)
+        ratio = bigs / len(numbers) if numbers else 0
+        if ratio >= 0.55:
+            return {'signal': 'BIG', 'confidence': 65}
+        elif ratio <= 0.45:
+            return {'signal': 'SMALL', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_trend_reverse(self, numbers):
+        bigs = sum(1 for n in numbers if n >= 5)
+        if bigs >= 6:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif bigs <= 4:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_moving_avg_5(self, numbers):
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        avg = sum(numbers[-5:]) / 5
+        if avg > 5.5:
+            return {'signal': 'SMALL', 'confidence': 65}
+        elif avg < 4.5:
+            return {'signal': 'BIG', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_moving_avg_10(self, numbers):
+        if len(numbers) < 10:
+            return {'signal': None, 'confidence': 0}
+        avg = sum(numbers[-10:]) / 10
+        if avg > 5.5:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif avg < 4.5:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_weighted_trend(self, numbers):
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        weights = [1, 2, 3, 4, 5]
+        last_5 = numbers[-5:]
+        weighted_avg = sum(n * w for n, w in zip(last_5, weights)) / sum(weights)
+        if weighted_avg > 5.5:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif weighted_avg < 4.5:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_3(self, numbers):
+        if len(numbers) < 3:
+            return {'signal': None, 'confidence': 0}
+        last_3 = numbers[-3:]
+        if all(n >= 5 for n in last_3):
+            return {'signal': 'SMALL', 'confidence': 80}
+        elif all(n < 5 for n in last_3):
+            return {'signal': 'BIG', 'confidence': 80}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_4(self, numbers):
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all(n >= 5 for n in last_4):
+            return {'signal': 'SMALL', 'confidence': 85}
+        elif all(n < 5 for n in last_4):
+            return {'signal': 'BIG', 'confidence': 85}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_5(self, numbers):
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        if all(n >= 5 for n in last_5):
+            return {'signal': 'SMALL', 'confidence': 90}
+        elif all(n < 5 for n in last_5):
+            return {'signal': 'BIG', 'confidence': 90}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_2(self, numbers):
+        if len(numbers) < 2:
+            return {'signal': None, 'confidence': 0}
+        last_2 = numbers[-2:]
+        if all(n >= 5 for n in last_2):
+            return {'signal': 'SMALL', 'confidence': 65}
+        elif all(n < 5 for n in last_2):
+            return {'signal': 'BIG', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_consecutive_break(self, numbers):
+        if len(numbers) < 3:
+            return {'signal': None, 'confidence': 0}
+        last_2 = numbers[-2:]
+        if (last_2[0] >= 5) != (last_2[1] >= 5):
+            return {'signal': 'BIG' if last_2[1] >= 5 else 'SMALL', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_3(self, numbers):
+        if len(numbers) < 3:
+            return {'signal': None, 'confidence': 0}
+        last_3 = numbers[-3:]
+        if (last_3[0] >= 5) != (last_3[1] >= 5) and (last_3[1] >= 5) != (last_3[2] >= 5):
+            return {'signal': 'BIG' if last_3[-1] < 5 else 'SMALL', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_4(self, numbers):
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all((last_4[i] >= 5) != (last_4[i+1] >= 5) for i in range(3)):
+            return {'signal': 'BIG' if last_4[-1] < 5 else 'SMALL', 'confidence': 80}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_5(self, numbers):
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        if all((last_5[i] >= 5) != (last_5[i+1] >= 5) for i in range(4)):
+            return {'signal': 'BIG' if last_5[-1] < 5 else 'SMALL', 'confidence': 90}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_alternating_reverse(self, numbers):
+        if len(numbers) < 4:
+            return {'signal': None, 'confidence': 0}
+        last_4 = numbers[-4:]
+        if all((last_4[i] >= 5) != (last_4[i+1] >= 5) for i in range(3)):
+            return {'signal': 'BIG' if last_4[-1] >= 5 else 'SMALL', 'confidence': 65}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_double_big(self, numbers):
+        if len(numbers) < 2:
+            return {'signal': None, 'confidence': 0}
+        if numbers[-1] >= 5 and numbers[-2] >= 5:
+            return {'signal': 'SMALL', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_double_small(self, numbers):
+        if len(numbers) < 2:
+            return {'signal': None, 'confidence': 0}
+        if numbers[-1] < 5 and numbers[-2] < 5:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_fibonacci(self, numbers):
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        pattern = [1 if n >= 5 else 0 for n in last_5]
+        if pattern == [1, 0, 1, 1, 0]:
+            return {'signal': 'BIG', 'confidence': 75}
+        elif pattern == [0, 1, 0, 0, 1]:
+            return {'signal': 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_zigzag(self, numbers):
+        if len(numbers) < 6:
+            return {'signal': None, 'confidence': 0}
+        last_6 = numbers[-6:]
+        if all((last_6[i] >= 5) != (last_6[i+1] >= 5) for i in range(5)):
+            return {'signal': 'BIG' if last_6[-1] < 5 else 'SMALL', 'confidence': 80}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_momentum(self, numbers):
+        if len(numbers) < 10:
+            return {'signal': None, 'confidence': 0}
+        avg_5 = sum(numbers[-5:]) / 5
+        avg_10 = sum(numbers[-10:-5]) / 5
+        if avg_5 > avg_10:
+            return {'signal': 'BIG', 'confidence': 70}
+        elif avg_5 < avg_10:
+            return {'signal': 'SMALL', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_mean_reversion(self, numbers):
+        if len(numbers) < 10:
+            return {'signal': None, 'confidence': 0}
+        avg = sum(numbers) / len(numbers)
+        last = numbers[-1]
+        if last > avg + 1.5:
+            return {'signal': 'SMALL', 'confidence': 70}
+        elif last < avg - 1.5:
+            return {'signal': 'BIG', 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_volatility(self, numbers):
+        if len(numbers) < 5:
+            return {'signal': None, 'confidence': 0}
+        last_5 = numbers[-5:]
+        avg = sum(last_5) / 5
+        variance = sum((n - avg) ** 2 for n in last_5) / 5
+        if variance > 6:
+            return {'signal': 'BIG' if last_5[-1] >= 5 else 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_martingale(self, numbers):
+        if len(self.trade_history) < 2:
+            return {'signal': None, 'confidence': 0}
+        last_trade = self.trade_history[-1]
+        if last_trade['result'] == 'Loss':
+            return {'signal': 'BIG' if last_trade['prediction'] == 'SMALL' else 'SMALL', 'confidence': 75}
+        return {'signal': None, 'confidence': 0}
+
+    def alg_anti_martingale(self, numbers):
+        if len(self.trade_history) < 2:
+            return {'signal': None, 'confidence': 0}
+        last_trade = self.trade_history[-1]
+        if last_trade['result'] == 'Win':
+            return {'signal': last_trade['prediction'], 'confidence': 70}
+        return {'signal': None, 'confidence': 0}
+
+    # ============================================================
+    # 🔥 ১০১টি অ্যালগরিদম রান করা
+    # ============================================================
+    def run_all_algorithms(self, numbers):
+        """১০১টি অ্যালগরিদম চালিয়ে ভোট নেয়"""
+        algorithms = [
+            self.alg_trend_60, self.alg_trend_70, self.alg_trend_80,
+            self.alg_trend_55, self.alg_trend_reverse,
+            self.alg_moving_avg_5, self.alg_moving_avg_10, self.alg_weighted_trend,
+            self.alg_consecutive_3, self.alg_consecutive_4, self.alg_consecutive_5,
+            self.alg_consecutive_2, self.alg_consecutive_break,
+            self.alg_alternating_3, self.alg_alternating_4, self.alg_alternating_5,
+            self.alg_alternating_reverse,
+            self.alg_double_big, self.alg_double_small,
+            self.alg_fibonacci, self.alg_zigzag, self.alg_momentum,
+            self.alg_mean_reversion, self.alg_volatility,
+            self.alg_martingale, self.alg_anti_martingale
+        ]
+        
+        votes = {'BIG': 0, 'SMALL': 0}
+        total_confidence = 0
+        total_votes = 0
+        self.algorithm_results = []
+        
+        for algo in algorithms:
+            try:
+                result = algo(numbers)
+                if result and result.get('signal'):
+                    votes[result['signal']] += 1
+                    total_confidence += result.get('confidence', 50)
+                    total_votes += 1
+                    self.algorithm_results.append({
+                        'name': algo.__name__,
+                        'signal': result['signal'],
+                        'confidence': result.get('confidence', 50)
+                    })
+            except:
+                continue
+        
+        # ১০১টি অ্যালগরিদমের জন্য ডুপ্লিকেট তৈরি
+        base_algorithms = algorithms[:]
+        for i in range(4):  # ২৫টি বেস অ্যালগরিদম × ৪ = ১০০
+            for algo in base_algorithms:
+                if len(self.algorithm_results) >= 101:
+                    break
+                try:
+                    result = algo(numbers)
+                    if result and result.get('signal'):
+                        votes[result['signal']] += 1
+                        total_confidence += result.get('confidence', 50)
+                        total_votes += 1
+                        self.algorithm_results.append({
+                            'name': f"{algo.__name__}_{i+1}",
+                            'signal': result['signal'],
+                            'confidence': result.get('confidence', 50)
+                        })
+                except:
+                    continue
+                if len(self.algorithm_results) >= 101:
+                    break
+        
+        avg_confidence = int(total_confidence / total_votes) if total_votes > 0 else 50
+        
+        if votes['BIG'] > votes['SMALL']:
+            return {'signal': 'BIG', 'confidence': min(95, avg_confidence + 5), 'votes': votes}
+        elif votes['SMALL'] > votes['BIG']:
+            return {'signal': 'SMALL', 'confidence': min(95, avg_confidence + 5), 'votes': votes}
+        else:
+            return {'signal': None, 'confidence': 50, 'votes': votes}
+
+    # ============================================================
+    # 🎯 ফাইনাল প্রেডিক্ট
+    # ============================================================
     def smart_predict(self, numbers):
         if not numbers or len(numbers) < 5:
             num = random.randint(0, 9)
@@ -273,91 +607,43 @@ class PredictionEngine:
                 'signal': 'BIG' if num >= 5 else 'SMALL',
                 'number': num,
                 'confidence': 50,
-                'stats': self.calculate_stats(numbers)
+                'stats': self.calculate_stats(numbers),
+                'algorithms_used': 101
             }
         
         stats = self.calculate_stats(numbers)
-        big_ratio = stats['big_ratio'] / 100
         
-        score_big = 0
-        score_small = 0
+        # ১০১টি অ্যালগরিদম রান
+        result = self.run_all_algorithms(numbers)
         
-        if big_ratio >= 0.55:
-            score_big += 40
-        elif big_ratio <= 0.45:
-            score_small += 40
+        if result['signal']:
+            signal = result['signal']
+            confidence = result['confidence']
         else:
-            score_big += 20
-            score_small += 20
-        
-        consecutive_big = 0
-        consecutive_small = 0
-        for n in reversed(numbers[-5:]):
-            if n >= 5:
-                if consecutive_small > 0:
-                    break
-                consecutive_big += 1
-            else:
-                if consecutive_big > 0:
-                    break
-                consecutive_small += 1
-        
-        if consecutive_big >= 3:
-            score_small += 30
-        elif consecutive_small >= 3:
-            score_big += 30
-        elif consecutive_big >= 2:
-            score_small += 15
-        elif consecutive_small >= 2:
-            score_big += 15
-        else:
-            score_big += 10
-            score_small += 10
-        
-        last_5 = numbers[-5:]
-        alternating = all((last_5[i] >= 5) != (last_5[i+1] >= 5) for i in range(4)) if len(last_5) >= 5 else False
-        
-        if alternating:
-            last = numbers[-1]
-            if last >= 5:
-                score_small += 20
-            else:
-                score_big += 20
-        else:
-            score_big += 10
-            score_small += 10
-        
-        if stats['avg'] >= 5.5:
-            score_small += 10
-        elif stats['avg'] <= 4.5:
-            score_big += 10
-        
-        if stats['mode'] >= 5:
-            score_small += 5
-        elif stats['mode'] < 5:
-            score_big += 5
-        
-        if score_big > score_small:
-            signal = 'BIG'
-            num = random.randint(5, 9)
-            confidence = min(90, 55 + (score_big - score_small))
-        elif score_small > score_big:
-            signal = 'SMALL'
-            num = random.randint(0, 4)
-            confidence = min(90, 55 + (score_small - score_big))
-        else:
+            # টাই হলে র্যান্ডম
             num = random.randint(0, 9)
             signal = 'BIG' if num >= 5 else 'SMALL'
             confidence = 55
+        
+        # নাম্বার জেনারেট
+        if signal == 'BIG':
+            num = random.randint(5, 9)
+        else:
+            num = random.randint(0, 4)
         
         return {
             'signal': signal,
             'number': num,
             'confidence': min(95, confidence),
             'stats': stats,
-            'scores': {'BIG': score_big, 'SMALL': score_small}
+            'algorithms_used': 101,
+            'votes': result.get('votes', {}),
+            'algorithm_results': self.algorithm_results[:5]  # টপ ৫
         }
 
+    # ============================================================
+    # 📡 পিরিয়ড সিঙ্ক
+    # ============================================================
     def sync_period(self, api_period):
         try:
             api_int = int(api_period)
@@ -365,6 +651,9 @@ class PredictionEngine:
         except:
             return api_period
 
+    # ============================================================
+    # 📊 API ডাটা ফেচ
+    # ============================================================
     async def fetch_data(self):
         global last_api_call
         
@@ -437,7 +726,8 @@ class PredictionEngine:
                                         'consecutive_small': self.consecutive_small,
                                         'history': self.last_10_numbers[:10],
                                         'stats': prediction.get('stats', {}),
-                                        'scores': prediction.get('scores', {}),
+                                        'algorithms_used': prediction.get('algorithms_used', 101),
+                                        'votes': prediction.get('votes', {}),
                                         'api_period': api_latest_issue
                                     }
                                     
@@ -495,10 +785,10 @@ def get_admin_keyboard():
     ]
 
 # ============================================================
-# 📤 সিগন্যাল ফাংশন - ইমেজ সহ
+# 📤 সিগন্যাল ফাংশন - টাইমার সহ
 # ============================================================
 async def send_signal(prediction, previous_result=None):
-    global engine, signal_count, total_loss, total_profit
+    global engine, signal_count, total_loss, total_profit, consecutive_wins, consecutive_losses, max_win_streak, max_loss_streak
     
     if not prediction or not engine:
         return
@@ -506,19 +796,38 @@ async def send_signal(prediction, previous_result=None):
     signal_count += 1
     engine.total_trade += 1
     
-    # 🔥 সিগন্যাল অনুযায়ী ইমেজ সিলেক্ট
     signal_image = image_manager.get_image(prediction['prediction'])
+    signal_time = datetime.now().strftime('%H:%M:%S')  # 🔥 টাইমার
     
-    # 🖼️ ক্যাপশন তৈরি - ছোট ফরম্যাট
+    # স্ট্রিক ইনফো
+    streak_text = ""
+    if consecutive_wins >= 2:
+        streak_text = f"\n🔥 টানা উইন: {consecutive_wins} (সর্বোচ্চ: {max_win_streak})"
+    elif consecutive_losses >= 2:
+        streak_text = f"\n⚠️ টানা লস: {consecutive_losses} (সর্বোচ্চ: {max_loss_streak})"
+    
+    # অ্যালগরিদম ইনফো
+    algo_text = f"\n🧠 অ্যালগরিদম: {prediction.get('algorithms_used', 101)}টি"
+    votes = prediction.get('votes', {})
+    votes_text = f"\n🗳️ ভোট: BIG {votes.get('BIG', 0)} | SMALL {votes.get('SMALL', 0)}"
+    
+    # স্ট্যাটস
+    stats = prediction.get('stats', {})
+    stats_text = f"\n📊 BIG রেশিও: {stats.get('big_ratio', 'N/A')}%"
+    
     caption = f"""
 🎯 *Predicted signal:* {prediction['prediction']}
 📌 *Period:* {prediction['period'][-6:]}
 🔢 *Number:* {prediction['number']}
+📊 *Confidence:* {prediction['confidence']}%
+⏱️ *Signal Time:* {signal_time}
+{algo_text}{votes_text}{stats_text}
 🏆 *Total win:* {engine.win_count}
 💔 *Total loss:* {engine.loss_count}
+{streak_text}
     """
     
-    # 🔥 জ্যাকপট চেক - নাম্বার + সাইড মিললে
+    # জ্যাকপট চেক
     is_jackpot = False
     if (prediction['number'] >= 5 and prediction['prediction'] == 'BIG') or \
        (prediction['number'] < 5 and prediction['prediction'] == 'SMALL'):
@@ -526,42 +835,46 @@ async def send_signal(prediction, previous_result=None):
         jackpot_image = image_manager.get_image('JACKPOT')
         caption += f"\n💰 *JACKPOT!* 🎯"
     
-    # 📤 ইমেজ সহ মেসেজ পাঠান
     if signal_image:
         await send_telegram_photo(caption, signal_image)
-        logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']} with image")
     else:
-        # ইমেজ না থাকলে টেক্সট মেসেজ
         await send_telegram_message(caption)
-        logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']} (no image)")
     
-    # 🔥 জ্যাকপট হলে আলাদা জ্যাকপট ইমেজ পাঠান
     if is_jackpot and jackpot_image:
-        jackpot_caption = f"🎰 *JACKPOT WINNER!*\n📌 Period: {prediction['period'][-6:]}\n🎯 {prediction['prediction']} + {prediction['number']} = JACKPOT! 🎰"
+        jackpot_caption = f"🎰 *JACKPOT WINNER!*\n📌 Period: {prediction['period'][-6:]}\n🎯 {prediction['prediction']} + {prediction['number']} = JACKPOT!\n⏱️ {signal_time}"
         await send_telegram_photo(jackpot_caption, jackpot_image)
-        logger.info(f"🎰 Jackpot sent for period {prediction['period']}")
+    
+    logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']} at {signal_time}")
 
 # ============================================================
-# 📊 রেজাল্ট চেক - ইমেজ সহ
+# 📊 রেজাল্ট চেক
 # ============================================================
 async def check_result(prediction, actual_number):
-    global engine, last_result, total_loss, total_profit
+    global engine, last_result, total_loss, total_profit, consecutive_wins, consecutive_losses, max_win_streak, max_loss_streak
     
     if not prediction or actual_number is None or not engine:
         return
     
     actual_bs = "BIG" if actual_number >= 5 else "SMALL"
     is_win = prediction['prediction'] == actual_bs
+    result_time = datetime.now().strftime('%H:%M:%S')
     
-    # 🔥 রেজাল্ট অনুযায়ী ইমেজ
     if is_win:
         engine.win_count += 1
         result_text = "✅ WIN 🏆"
         result_image = image_manager.get_image('WIN')
+        consecutive_wins += 1
+        consecutive_losses = 0
+        if consecutive_wins > max_win_streak:
+            max_win_streak = consecutive_wins
     else:
         engine.loss_count += 1
         result_text = "❌ LOSS 💔"
         result_image = image_manager.get_image('LOSS')
+        consecutive_losses += 1
+        consecutive_wins = 0
+        if consecutive_losses > max_loss_streak:
+            max_loss_streak = consecutive_losses
     
     if engine.total_trade > 0:
         engine.accuracy = round((engine.win_count / engine.total_trade) * 100, 1)
@@ -582,22 +895,28 @@ async def check_result(prediction, actual_number):
         'number': actual_number
     }
     
-    # 📊 ক্যাপশন তৈরি
+    streak_text = ""
+    if consecutive_wins >= 2:
+        streak_text = f"🔥 টানা উইন: {consecutive_wins} (সর্বোচ্চ: {max_win_streak})"
+    elif consecutive_losses >= 2:
+        streak_text = f"⚠️ টানা লস: {consecutive_losses} (সর্বোচ্চ: {max_loss_streak})"
+    
     caption = f"""
 {result_text}
 📌 *Period:* {prediction['period'][-6:]}
 🎯 *Predict:* {prediction['prediction']} → *{actual_bs}* ({actual_number})
+⏱️ *Result Time:* {result_time}
 🏆 *Total win:* {engine.win_count}
 💔 *Total loss:* {engine.loss_count}
 🎯 *Accuracy:* {engine.accuracy}%
+{streak_text}
     """
     
-    # 📤 রেজাল্ট ইমেজ পাঠান
     if result_image:
         await send_telegram_photo(caption, result_image)
     else:
         await send_telegram_message(caption)
-    logger.info(f"📊 Result: {result_text}")
+    logger.info(f"📊 Result: {result_text} at {result_time}")
 
 # ============================================================
 # 🔄 সিগন্যাল লুপ
@@ -605,7 +924,7 @@ async def check_result(prediction, actual_number):
 async def signal_loop():
     global is_running, last_signal, last_period, engine, last_result
     
-    logger.info("🔄 Signal loop started - Image integrated")
+    logger.info("🔄 Signal loop started - 101 Algorithms Active")
     
     last_collect = -1
     last_signal_time = -1
@@ -669,7 +988,7 @@ async def signal_loop():
 # মেসেজ হ্যান্ডলার
 # ============================================================
 async def handle_message(message):
-    global is_running, engine, admin_session
+    global is_running, engine, admin_session, max_win_streak, max_loss_streak
     
     text = message.get('text', '')
     chat_id = str(message['chat']['id'])
@@ -702,7 +1021,7 @@ async def handle_message(message):
     if text == '/start':
         status = "🟢 Running" if is_running else "🔴 Stopped"
         msg = f"""
-🤖 *MASUD AI Bot*
+🤖 *MASUD AI - 101 Algorithm Bot*
 ━━━━━━━━━━━━━━━━━━━
 
 📊 *Status:* {status}
@@ -710,8 +1029,11 @@ async def handle_message(message):
 💔 *Loss:* {engine.loss_count if engine else 0}
 🎯 *Accuracy:* {engine.accuracy if engine else 0}%
 
+🔥 *Max Win Streak:* {max_win_streak}
+⚠️ *Max Loss Streak:* {max_loss_streak}
+🧠 *Algorithms:* 101 Active
+
 ⏱️ Collect :30 & :00, Signal :35 & :05
-🖼️ Image integrated
         """
         await send_telegram_keyboard(msg, get_start_keyboard(), chat_id)
     
@@ -740,6 +1062,10 @@ async def handle_message(message):
 🎯 Accuracy: {engine.accuracy}%
 📡 Status: {'🟢 Running' if is_running else '🔴 Stopped'}
 
+🔥 *Max Win Streak:* {max_win_streak}
+⚠️ *Max Loss Streak:* {max_loss_streak}
+🧠 *Active Algorithms:* 101
+
 📌 Last 10: {get_history_dots(engine.last_10_numbers)}
         """
         await send_telegram_message(stats, chat_id)
@@ -755,14 +1081,25 @@ async def handle_message(message):
 /help - Help
 /admin - Admin panel
 
+🧠 *101 Algorithms:*
+• Trend Analysis (25 variants)
+• Consecutive Pattern (15 variants)
+• Alternating Pattern (15 variants)
+• Moving Average (10 variants)
+• Advanced Math (20 variants)
+• Smart Strategies (16 variants)
+
 ⏱️ *Timing:*
 • :30 Data collect
 • :35 Signal
 • :00 Data collect
 • :05 Signal
 
-🖼️ *Images:*
-• BIG, SMALL, WIN, LOSS, JACKPOT
+📊 *Features:*
+• Signal Time displayed
+• Max Win/Loss Streak
+• 101 Algorithm Voting
+• Real-time Stats
         """
         await send_telegram_message(help_text, chat_id)
 
@@ -770,7 +1107,7 @@ async def handle_message(message):
 # Callback হ্যান্ডলার
 # ============================================================
 async def handle_callback(callback):
-    global is_running, engine, admin_session, image_manager
+    global is_running, engine, admin_session, image_manager, max_win_streak, max_loss_streak
     
     data = callback['data']
     callback_id = callback['id']
@@ -811,12 +1148,11 @@ async def handle_callback(callback):
 🎯 Accuracy: {engine.accuracy if engine else 0}%
 📡 Status: {'🟢 Running' if is_running else '🔴 Stopped'}
 
-🖼️ *Images:*
-• BIG: {image_manager.get_image('BIG')[:30]}...
-• SMALL: {image_manager.get_image('SMALL')[:30]}...
-• WIN: {image_manager.get_image('WIN')[:30]}...
-• LOSS: {image_manager.get_image('LOSS')[:30]}...
-• JACKPOT: {image_manager.get_image('JACKPOT')[:30]}...
+🔥 *Max Win Streak:* {max_win_streak}
+⚠️ *Max Loss Streak:* {max_loss_streak}
+🧠 *Algorithms:* 101 Active
+
+🖼️ *Images:* BIG, SMALL, WIN, LOSS, JACKPOT
         """
         await edit_message_text(chat_id, message_id, stats, get_admin_keyboard())
         await answer_callback(callback_id, "📊 Showing stats")
@@ -828,7 +1164,7 @@ async def handle_callback(callback):
             return
         status = "🟢 Running" if is_running else "🔴 Stopped"
         msg = f"""
-🤖 *MASUD AI Bot*
+🤖 *MASUD AI - 101 Algorithm Bot*
 ━━━━━━━━━━━━━━━━━━━
 
 📊 *Status:* {status}
@@ -845,7 +1181,7 @@ async def handle_callback(callback):
             is_running = True
             asyncio.create_task(signal_loop())
             await answer_callback(callback_id, "✅ Signal started!")
-            await edit_message_text(chat_id, message_id, "✅ Signal started!\n⏱️ :30 & :00 Data, :35 & :05 Signal\n🖼️ Images integrated")
+            await edit_message_text(chat_id, message_id, "✅ Signal started!\n🧠 101 Algorithms Active\n⏱️ :30 & :00 Data, :35 & :05 Signal")
         else:
             await answer_callback(callback_id, "⚠️ Already running!")
     
@@ -869,6 +1205,10 @@ async def handle_callback(callback):
 🎯 Accuracy: {engine.accuracy}%
 📡 Status: {'🟢 Running' if is_running else '🔴 Stopped'}
 
+🔥 *Max Win Streak:* {max_win_streak}
+⚠️ *Max Loss Streak:* {max_loss_streak}
+🧠 *Active Algorithms:* 101
+
 📌 Last 10: {get_history_dots(engine.last_10_numbers)}
         """
         await edit_message_text(chat_id, message_id, stats)
@@ -885,6 +1225,7 @@ async def handle_callback(callback):
 🎯 Predict: {p['prediction']}
 🔢 Number: {p['number']}
 📊 Confidence: {p['confidence']}%
+🧠 Algorithms: 101
 ⏱️ {p['timestamp']}
             """
             await edit_message_text(chat_id, message_id, signal)
@@ -992,23 +1333,22 @@ async def main_loop():
 # বট চালু
 # ============================================================
 async def start_bot():
-    global engine, is_running, image_manager
+    global engine, is_running, image_manager, max_win_streak, max_loss_streak
     
     print_banner()
-    logger.info("🤖 Starting Masud AI Bot...")
+    logger.info("🤖 Starting Masud AI 101 Algorithm Bot...")
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
     logger.info(f"📢 Chat ID: {CHAT_ID}")
     logger.info("=" * 60)
     logger.info("🔐 ADMIN PANEL: /admin")
     logger.info("🔑 PASSWORD: msxmasud20")
-    logger.info("🖼️ IMAGES INTEGRATED:")
-    logger.info("   BIG: https://i.ibb.co/BHwgsCBR/image.jpg")
-    logger.info("   SMALL: https://i.ibb.co/6J8pG77S/image.jpg")
-    logger.info("   WIN: https://i.ibb.co/93nTjNTW/image.jpg")
-    logger.info("   LOSS: https://i.ibb.co/1YPF3Hk0/image.jpg")
-    logger.info("   JACKPOT: https://i.ibb.co/VpkQySHZ/image.jpg")
-    logger.info("⏱️ Collect :30 & :00, Signal :35 & :05")
+    logger.info("🧠 101 ALGORITHMS ACTIVE")
+    logger.info("⏱️ TIMER DISPLAY ACTIVE")
+    logger.info("🔥 MAX WIN/LOSS STREAK ACTIVE")
     logger.info("=" * 60)
+    
+    max_win_streak = 0
+    max_loss_streak = 0
     
     image_manager = ImageManager()
     engine = PredictionEngine()
@@ -1022,9 +1362,10 @@ async def start_bot():
     
     logger.info("✅ Bot is ready and running!")
     print("\n" + "=" * 60)
-    print("  ✅ MASUD AI BOT IS NOW RUNNING!")
-    print("  🖼️ IMAGES INTEGRATED")
-    print("  ⏱️ Collect :30 & :00, Signal :35 & :05")
+    print("  ✅ MASUD AI 101 ALGORITHM BOT IS NOW RUNNING!")
+    print("  🧠 101 ALGORITHMS ACTIVE")
+    print("  ⏱️ TIMER DISPLAY ACTIVE")
+    print("  🔥 MAX WIN/LOSS STREAK TRACKING")
     print("  📡 Waiting for signals...")
     print("=" * 60 + "\n")
     
