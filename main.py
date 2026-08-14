@@ -4,7 +4,7 @@ import aiohttp
 import json
 import random
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # ============================================================
 # লগিং সেটআপ
@@ -43,8 +43,8 @@ def print_banner():
 ║   ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║             ║
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
-║         🤖 MASUD AI - PREMIUM PREDICTION BOT                ║
-║         🚀 VERSION 4.0 - FIXED API CONNECTION               ║
+║         🤖 MASUD AI - SMART PREDICTION BOT                  ║
+║         🚀 VERSION 6.0 - MULTI-FACTOR ALGORITHM            ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
@@ -135,11 +135,10 @@ async def edit_message_text(chat_id, message_id, text, keyboard=None):
         return False
 
 # ============================================================
-# API কনফিগারেশন - ফিক্সড হেডার সহ
+# API কনফিগারেশন
 # ============================================================
 API_URL = "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageNo=1&pageSize=10"
 
-# সঠিক হেডার - আপনার HTML ফাইলের মতো
 API_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
@@ -166,7 +165,7 @@ offset = None
 signal_count = 0
 
 # ============================================================
-# প্রেডিকশন ইঞ্জিন - আপনার HTML ফাইলের মতো
+# 🧠 স্মার্ট প্রেডিকশন ইঞ্জিন - মাল্টি-ফ্যাক্টর অ্যালগরিদম
 # ============================================================
 class PredictionEngine:
     def __init__(self):
@@ -183,91 +182,207 @@ class PredictionEngine:
         self.small_count = 0
         self.consecutive_big = 0
         self.consecutive_small = 0
+        self.alternating_count = 0
 
+    # ============================================================
+    # 📊 ফ্যাক্টর ১: ট্রেন্ড অ্যানালাইসিস (৬০% ওয়েট)
+    # ============================================================
     def analyze_trend(self, numbers):
-        """আপনার HTML ফাইলের analyzeTrend ফাংশনের মতো"""
-        if not numbers or len(numbers) < 3:
-            return {'trend': 'neutral', 'confidence': 50}
+        """ট্রেন্ড বিশ্লেষণ - BIG/SMALL রেশিও"""
+        if not numbers or len(numbers) < 5:
+            return {'trend': 'neutral', 'score': 0, 'confidence': 50}
         
         bigs = sum(1 for n in numbers if n >= 5)
         smalls = len(numbers) - bigs
         
-        last_three = numbers[-3:] if len(numbers) >= 3 else numbers
+        # রেশিও ক্যালকুলেশন
+        big_ratio = bigs / len(numbers) if len(numbers) > 0 else 0
+        
+        # ট্রেন্ড ডিটেকশন
+        if big_ratio >= 0.65:
+            return {'trend': 'BIG', 'score': 60, 'confidence': 85}
+        elif big_ratio <= 0.35:
+            return {'trend': 'SMALL', 'score': 60, 'confidence': 85}
+        elif big_ratio >= 0.55:
+            return {'trend': 'BIG', 'score': 40, 'confidence': 70}
+        elif big_ratio <= 0.45:
+            return {'trend': 'SMALL', 'score': 40, 'confidence': 70}
+        else:
+            return {'trend': 'neutral', 'score': 0, 'confidence': 50}
+
+    # ============================================================
+    # 🔄 ফ্যাক্টর ২: কনসিকিউটিভ প্যাটার্ন (২৫% ওয়েট)
+    # ============================================================
+    def analyze_consecutive(self, numbers):
+        """কনসিকিউটিভ প্যাটার্ন বিশ্লেষণ"""
+        if not numbers or len(numbers) < 3:
+            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
+        
+        last_three = numbers[-3:]
         all_big = all(n >= 5 for n in last_three)
         all_small = all(n < 5 for n in last_three)
         
-        alternating = True
-        if len(last_three) >= 3:
-            for i in range(1, len(last_three)):
-                if (last_three[i-1] >= 5) == (last_three[i] >= 5):
-                    alternating = False
+        # কনসিকিউটিভ কাউন্ট
+        consecutive_big = 0
+        consecutive_small = 0
+        for n in reversed(numbers):
+            if n >= 5:
+                if consecutive_small > 0:
                     break
+                consecutive_big += 1
+            else:
+                if consecutive_big > 0:
+                    break
+                consecutive_small += 1
         
-        big_ratio = bigs / len(numbers) if len(numbers) > 0 else 0
-        confidence = min(95, round((abs(big_ratio - 0.5) * 2) * 100))
-        
-        trend = 'neutral'
-        if big_ratio > 0.6:
-            trend = 'BIG'
-        elif big_ratio < 0.4:
-            trend = 'SMALL'
-        elif all_big:
-            trend = 'BIG'
-            confidence = min(95, confidence + 10)
-        elif all_small:
-            trend = 'SMALL'
-            confidence = min(95, confidence + 10)
-        elif alternating and len(last_three) >= 3:
-            last = last_three[-1]
-            trend = 'SMALL' if last >= 5 else 'BIG'
-            confidence = min(90, confidence + 10)
-        
-        return {'trend': trend, 'confidence': max(55, confidence)}
+        # সিদ্ধান্ত
+        if consecutive_big >= 3:
+            return {'trend': 'SMALL', 'score': 25, 'confidence': 80}  # রিভার্স
+        elif consecutive_small >= 3:
+            return {'trend': 'BIG', 'score': 25, 'confidence': 80}   # রিভার্স
+        elif consecutive_big >= 2:
+            return {'trend': 'SMALL', 'score': 15, 'confidence': 65}
+        elif consecutive_small >= 2:
+            return {'trend': 'BIG', 'score': 15, 'confidence': 65}
+        else:
+            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
 
-    def predict_next(self, numbers):
-        """আপনার HTML ফাইলের predictNextNumber ফাংশনের মতো"""
-        if not numbers:
+    # ============================================================
+    # 🔀 ফ্যাক্টর ৩: অল্টারনেটিং প্যাটার্ন (১৫% ওয়েট)
+    # ============================================================
+    def analyze_alternating(self, numbers):
+        """অল্টারনেটিং প্যাটার্ন বিশ্লেষণ"""
+        if not numbers or len(numbers) < 4:
+            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
+        
+        last_four = numbers[-4:]
+        alternating = True
+        for i in range(1, len(last_four)):
+            if (last_four[i-1] >= 5) == (last_four[i] >= 5):
+                alternating = False
+                break
+        
+        if alternating:
+            # অল্টারনেটিং হলে শেষ সংখ্যার উল্টোটা
+            last = last_four[-1]
+            if last >= 5:
+                return {'trend': 'SMALL', 'score': 15, 'confidence': 70}
+            else:
+                return {'trend': 'BIG', 'score': 15, 'confidence': 70}
+        else:
+            return {'trend': 'neutral', 'score': 0, 'confidence': 0}
+
+    # ============================================================
+    # 🎯 মেইন প্রেডিক্ট ফাংশন - ৩ ফ্যাক্টর কম্বাইন
+    # ============================================================
+    def smart_predict(self, numbers):
+        """
+        মাল্টি-ফ্যাক্টর স্মার্ট প্রেডিক্ট
+        - ট্রেন্ড (৬০%)
+        - কনসিকিউটিভ (২৫%)
+        - অল্টারনেটিং (১৫%)
+        """
+        if not numbers or len(numbers) < 5:
+            # পর্যাপ্ত ডাটা না থাকলে র্যান্ডম
             num = random.randint(0, 9)
             return {
                 'number': num,
                 'bs': 'BIG' if num >= 5 else 'SMALL',
-                'confidence': 60
+                'confidence': 50,
+                'signal': 'WAIT',
+                'reason': 'Insufficient data'
             }
         
-        analysis = self.analyze_trend(numbers)
-        confidence = analysis['confidence']
+        # ৩টি ফ্যাক্টর অ্যানালাইসিস
+        trend_result = self.analyze_trend(numbers)
+        consecutive_result = self.analyze_consecutive(numbers)
+        alternating_result = self.analyze_alternating(numbers)
         
-        if analysis['trend'] == 'BIG':
-            predicted_num = random.randint(5, 9)
-            confidence = min(95, confidence + 5)
-        elif analysis['trend'] == 'SMALL':
-            predicted_num = random.randint(0, 4)
-            confidence = min(95, confidence + 5)
+        # স্কোর যোগ করা
+        scores = {'BIG': 0, 'SMALL': 0, 'neutral': 0}
+        confidence = 0
+        
+        # ফ্যাক্টর ১: ট্রেন্ড (৬০%)
+        if trend_result['trend'] == 'BIG':
+            scores['BIG'] += 60
+            confidence += trend_result['confidence'] * 0.6
+        elif trend_result['trend'] == 'SMALL':
+            scores['SMALL'] += 60
+            confidence += trend_result['confidence'] * 0.6
         else:
-            avg = sum(numbers) / len(numbers) if numbers else 0
-            if avg > 4.5:
-                predicted_num = random.randint(4, 9)
-                confidence = 65
-            else:
-                predicted_num = random.randint(0, 5)
-                confidence = 65
+            scores['neutral'] += 60
         
-        if random.random() < 0.05 and len(numbers) > 5:
-            predicted_num = random.randint(0, 4) if predicted_num >= 5 else random.randint(5, 9)
-            confidence = max(50, confidence - 10)
+        # ফ্যাক্টর ২: কনসিকিউটিভ (২৫%)
+        if consecutive_result['trend'] == 'BIG':
+            scores['BIG'] += 25
+            confidence += consecutive_result['confidence'] * 0.25
+        elif consecutive_result['trend'] == 'SMALL':
+            scores['SMALL'] += 25
+            confidence += consecutive_result['confidence'] * 0.25
+        else:
+            scores['neutral'] += 25
+        
+        # ফ্যাক্টর ৩: অল্টারনেটিং (১৫%)
+        if alternating_result['trend'] == 'BIG':
+            scores['BIG'] += 15
+            confidence += alternating_result['confidence'] * 0.15
+        elif alternating_result['trend'] == 'SMALL':
+            scores['SMALL'] += 15
+            confidence += alternating_result['confidence'] * 0.15
+        else:
+            scores['neutral'] += 15
+        
+        # ফাইনাল ডিসিশন
+        if scores['BIG'] > scores['SMALL'] and scores['BIG'] > 40:
+            predicted = 'BIG'
+            num = random.randint(5, 9)
+            conf = round(confidence / 100 * 100) if confidence > 0 else 60
+            reason = f"BIG (Score: {scores['BIG']})"
+        elif scores['SMALL'] > scores['BIG'] and scores['SMALL'] > 40:
+            predicted = 'SMALL'
+            num = random.randint(0, 4)
+            conf = round(confidence / 100 * 100) if confidence > 0 else 60
+            reason = f"SMALL (Score: {scores['SMALL']})"
+        else:
+            # কনফিউজড - WAIT
+            num = random.randint(0, 9)
+            predicted = 'WAIT'
+            conf = 0
+            reason = f"WAIT (BIG:{scores['BIG']}, SMALL:{scores['SMALL']})"
         
         return {
-            'number': predicted_num,
-            'bs': 'BIG' if predicted_num >= 5 else 'SMALL',
-            'confidence': round(confidence)
+            'number': num,
+            'bs': predicted,
+            'confidence': min(95, max(50, conf)),
+            'signal': predicted,
+            'reason': reason,
+            'scores': scores
         }
 
+    # ============================================================
+    # 📡 পিরিয়ড সিঙ্ক ফাংশন
+    # ============================================================
+    def get_current_win_go_period(self):
+        """উইংগোর বর্তমান পিরিয়ড ক্যালকুলেট করে"""
+        now = datetime.now()
+        base = datetime(2024, 1, 1, 0, 0, 0)
+        seconds_diff = int((now - base).total_seconds())
+        period_number = seconds_diff // 30
+        base_period = 728000
+        current_period = base_period + period_number
+        return str(current_period)
+
+    # ============================================================
+    # 📊 API ডাটা ফেচ
+    # ============================================================
     async def fetch_data(self):
-        """API থেকে ডাটা সংগ্রহ - ফিক্সড হেডার সহ"""
+        """API থেকে ডাটা সংগ্রহ - পিরিয়ড সিঙ্ক সহ"""
         try:
-            logger.info("📡 Attempting to fetch data from API...")
+            logger.info("📡 Fetching data from API...")
             
-            # কুকি সহ সেশন তৈরি
+            win_go_period = self.get_current_win_go_period()
+            logger.info(f"📌 Current WinGo Period: {win_go_period}")
+            
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     API_URL, 
@@ -275,18 +390,10 @@ class PredictionEngine:
                     timeout=15,
                     allow_redirects=True
                 ) as response:
-                    logger.info(f"📡 API Response Status: {response.status}")
-                    
                     if response.status == 200:
                         try:
-                            # টেক্সট হিসেবে পড়ে তারপর JSON পার্স
                             text = await response.text()
-                            logger.info(f"📄 Response text: {text[:200]}...")
-                            
-                            # JSON পার্স
                             data = json.loads(text)
-                            logger.info("✅ JSON parsed successfully")
-                            
                         except Exception as e:
                             logger.error(f"❌ JSON parse error: {e}")
                             return None
@@ -301,14 +408,30 @@ class PredictionEngine:
                                     except:
                                         pass
                             
-                            logger.info(f"📊 Numbers from API: {numbers[:10]}")
-                            
                             if numbers:
-                                latest_issue = items[0].get('issueNumber', '')
-                                logger.info(f"📌 Latest Issue: {latest_issue}")
+                                api_latest_issue = items[0].get('issueNumber', '')
                                 
-                                if latest_issue != self.last_issue:
-                                    self.last_issue = latest_issue
+                                # পিরিয়ড সিঙ্ক
+                                try:
+                                    api_period_int = int(api_latest_issue)
+                                    win_go_period_int = int(win_go_period)
+                                    diff = win_go_period_int - api_period_int
+                                    
+                                    if diff == 1:
+                                        use_period = win_go_period
+                                        logger.info(f"🔄 Period sync: Using WinGo period {win_go_period}")
+                                    elif diff == 0:
+                                        use_period = api_latest_issue
+                                        logger.info(f"✅ Periods in sync: {api_latest_issue}")
+                                    else:
+                                        use_period = api_latest_issue
+                                        logger.info(f"⚠️ Using API period: {api_latest_issue}")
+                                except:
+                                    use_period = api_latest_issue
+                                
+                                # নতুন পিরিয়ড চেক
+                                if use_period != self.last_issue:
+                                    self.last_issue = use_period
                                     self.history = numbers[:30]
                                     self.last_10_numbers = numbers[:10]
                                     
@@ -328,10 +451,11 @@ class PredictionEngine:
                                                 break
                                             self.consecutive_small += 1
                                     
-                                    prediction = self.predict_next(self.history)
+                                    # 🧠 স্মার্ট প্রেডিক্ট
+                                    prediction = self.smart_predict(self.history)
                                     
                                     self.current_prediction = {
-                                        'period': latest_issue,
+                                        'period': use_period,
                                         'prediction': prediction['bs'],
                                         'number': prediction['number'],
                                         'confidence': prediction['confidence'],
@@ -340,32 +464,20 @@ class PredictionEngine:
                                         'small_count': self.small_count,
                                         'consecutive_big': self.consecutive_big,
                                         'consecutive_small': self.consecutive_small,
-                                        'history': self.last_10_numbers[:10]
+                                        'history': self.last_10_numbers[:10],
+                                        'reason': prediction.get('reason', ''),
+                                        'scores': prediction.get('scores', {}),
+                                        'signal': prediction.get('signal', ''),
+                                        'api_period': api_latest_issue,
+                                        'win_go_period': win_go_period
                                     }
                                     
-                                    logger.info(f"🎯 NEW PREDICTION: {self.current_prediction}")
+                                    logger.info(f"🎯 SMART PREDICTION: {self.current_prediction}")
                                     return self.current_prediction
-                                else:
-                                    logger.info("⏳ No new issue, waiting...")
-                        else:
-                            logger.warning("⚠️ No 'list' in response data")
                     else:
                         logger.warning(f"⚠️ API status: {response.status}")
-                        # Try to read error response
-                        try:
-                            error_text = await response.text()
-                            logger.warning(f"⚠️ Error response: {error_text[:200]}")
-                        except:
-                            pass
-                    
                     return None
                     
-        except asyncio.TimeoutError:
-            logger.error("❌ API timeout")
-            return None
-        except aiohttp.ClientError as e:
-            logger.error(f"❌ Client error: {e}")
-            return None
         except Exception as e:
             logger.error(f"❌ API Error: {e}")
             return None
@@ -416,7 +528,7 @@ async def send_signal(prediction):
     global engine, signal_count
     
     if not prediction or not engine:
-        logger.error("❌ Cannot send signal: prediction or engine is None")
+        logger.error("❌ Cannot send signal")
         return
     
     signal_count += 1
@@ -424,22 +536,39 @@ async def send_signal(prediction):
     
     bar = get_confidence_bar(prediction['confidence'])
     dots = get_history_dots(prediction.get('history', []))
-    bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴"
+    bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴" if prediction['prediction'] == "SMALL" else "⏳"
+    
+    # স্মার্ট অ্যালগরিদম ইনফো
+    algo_info = f"\n🧠 অ্যালগরিদম: {prediction.get('reason', 'N/A')}"
+    if 'scores' in prediction and prediction['scores']:
+        scores = prediction['scores']
+        algo_info += f"\n📊 স্কোর: BIG {scores.get('BIG', 0)} | SMALL {scores.get('SMALL', 0)}"
+    
+    # পিরিয়ড সিঙ্ক ইনফো
+    period_info = ""
+    if 'api_period' in prediction and 'win_go_period' in prediction:
+        if prediction['api_period'] != prediction['win_go_period']:
+            period_info = f"\n🔄 সিঙ্ক: {prediction['api_period']} → {prediction['win_go_period']}"
+    
+    # সিগন্যাল টাইপ
+    signal_type = "🎯" if prediction['prediction'] != "WAIT" else "⏳"
+    signal_text = prediction['prediction'] if prediction['prediction'] != "WAIT" else "⏳ অপেক্ষা করুন"
     
     msg = f"""
-🎯 *MASUD AI - রিয়েল প্রেডিক্ট*
+{signal_type} *MASUD AI - স্মার্ট প্রেডিক্ট*
 ━━━━━━━━━━━━━━━━━━━━━━
 
-🔢 *পিরিয়ড:* `{prediction['period'][-6:]}`
-🎯 *সিগন্যাল:* {bs_emoji} *{prediction['prediction']}*
-🔢 *প্রেডিক্টেড নম্বর:* `{prediction['number']}`
-📊 *কনফিডেন্স:* {prediction['confidence']}% {bar}
+🔢 *পিরিয়ড:* `{prediction['period'][-6:]}`{period_info}
+🎯 *সিগন্যাল:* {bs_emoji} *{signal_text}*
+🔢 *প্রেডিক্টেড নম্বর:* `{prediction['number'] if prediction['prediction'] != 'WAIT' else '--'}`
+📊 *কনফিডেন্স:* {prediction['confidence']}% {bar if prediction['prediction'] != 'WAIT' else '⏳'}
 
 📈 *ট্রেন্ড অ্যানালাইসিস:*
 • লাস্ট ১০: {dots}
 • BIG: {prediction.get('big_count', 0)} | SMALL: {prediction.get('small_count', 0)}
 • কনসিকিউটিভ BIG: {prediction.get('consecutive_big', 0)}
 • কনসিকিউটিভ SMALL: {prediction.get('consecutive_small', 0)}
+{algo_info}
 
 📊 *পরিসংখ্যান:*
 🏆 উইন: {engine.win_count} | 💔 লস: {engine.loss_count}
@@ -452,12 +581,16 @@ async def send_signal(prediction):
     
     logger.info(f"📤 SENDING SIGNAL #{signal_count}: {prediction['prediction']}")
     await send_telegram_message(msg)
-    logger.info(f"✅ Signal #{signal_count} sent successfully")
+    logger.info(f"✅ Signal #{signal_count} sent")
 
 async def check_result(prediction, actual_number):
     global engine
     
     if not prediction or actual_number is None or not engine:
+        return
+    
+    # WAIT সিগন্যালের রেজাল্ট চেক করি না
+    if prediction['prediction'] == 'WAIT':
         return
     
     actual_bs = "BIG" if actual_number >= 5 else "SMALL"
@@ -509,36 +642,28 @@ async def check_result(prediction, actual_number):
 async def signal_loop():
     global is_running, last_signal, last_period, engine, signal_count
     
-    logger.info("🔄 Signal loop started - waiting for signals...")
+    logger.info("🔄 Signal loop started - SMART ALGORITHM ACTIVE")
     
     while is_running:
         try:
             if engine:
-                logger.info("🔍 Fetching data from API...")
                 prediction = await engine.fetch_data()
                 
                 if prediction:
-                    logger.info(f"📊 Got prediction: {prediction}")
-                    
                     if prediction['period'] != last_period:
-                        logger.info(f"🆕 New period detected: {prediction['period']}")
-                        
                         if last_period and last_signal:
                             if engine.history:
                                 real_num = engine.history[0] if engine.history else None
                                 if real_num is not None:
-                                    logger.info(f"📊 Checking result for period {last_period}")
                                     await check_result(last_signal, real_num)
                         
                         last_period = prediction['period']
                         last_signal = prediction
-                        
-                        logger.info(f"📤 Sending signal for period {prediction['period']}")
                         await send_signal(prediction)
                     else:
-                        logger.info(f"⏳ Same period {prediction['period']}, waiting...")
+                        logger.info(f"⏳ Same period {prediction['period']}")
                 else:
-                    logger.info("⏳ No prediction available, waiting...")
+                    logger.info("⏳ No prediction")
             
             await asyncio.sleep(30)
             
@@ -561,7 +686,7 @@ async def handle_message(message):
     if text == '/start':
         status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
         msg = f"""
-🤖 *MASUD AI - রিয়েল প্রেডিক্টর*
+🤖 *MASUD AI - স্মার্ট প্রেডিক্টর*
 ━━━━━━━━━━━━━━━━━━━━━━
 
 📊 *স্ট্যাটাস:* {status}
@@ -572,6 +697,7 @@ async def handle_message(message):
 
 📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers) if engine else '---'}
 
+🧠 *স্মার্ট অ্যালগরিদম:* ৩-ফ্যাক্টর সিস্টেম
 💡 নিচের বাটন ব্যবহার করুন
         """
         await send_telegram_keyboard(msg, get_start_keyboard())
@@ -618,11 +744,10 @@ async def handle_message(message):
 /stats - পরিসংখ্যান দেখুন
 /help - এই মেসেজ দেখান
 
-📊 *ফিচারসমূহ:*
-✅ ৩০ সেকেন্ডে অটো সিগন্যাল
-✅ BIG/SMALL প্রেডিক্ট
-✅ উইন/লস ট্র্যাকার
-✅ লাইভ স্ট্যাটাস
+🧠 *স্মার্ট অ্যালগরিদম:*
+• ট্রেন্ড অ্যানালাইসিস (৬০%)
+• কনসিকিউটিভ প্যাটার্ন (২৫%)
+• অল্টারনেটিং প্যাটার্ন (১৫%)
 
 ⚡ *পাওয়ার্ড বাই MASUD AI*
         """
@@ -645,7 +770,7 @@ async def handle_callback(callback):
             is_running = True
             asyncio.create_task(signal_loop())
             await answer_callback(callback_id, "✅ সিগন্যাল চালু হয়েছে!")
-            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে! প্রতি ৩০ সেকেন্ডে আপডেট আসবে।")
+            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে! স্মার্ট অ্যালগরিদম সক্রিয়।")
         else:
             await answer_callback(callback_id, "⚠️ সিগন্যাল ইতিমধ্যে চালু আছে!")
     
@@ -688,13 +813,14 @@ async def handle_callback(callback):
 ━━━━━━━━━━━━━━━━━━━
 
 🔢 পিরিয়ড: `{p['period'][-6:]}`
-🎯 সিগন্যাল: {'🟢' if p['prediction'] == 'BIG' else '🔴'} *{p['prediction']}*
-🔢 নম্বর: `{p['number']}`
+🎯 সিগন্যাল: {'🟢' if p['prediction'] == 'BIG' else '🔴' if p['prediction'] == 'SMALL' else '⏳'} *{p['prediction']}*
 📊 কনফিডেন্স: {p['confidence']}% {bar}
 
 📈 *ট্রেন্ড অ্যানালাইসিস:*
 • লাস্ট ১০: {dots}
 • BIG: {p.get('big_count', 0)} | SMALL: {p.get('small_count', 0)}
+
+🧠 *অ্যালগরিদম:* {p.get('reason', 'N/A')}
 
 ⏱️ সময়: {p['timestamp']}
 ━━━━━━━━━━━━━━━━━━━
@@ -742,26 +868,26 @@ async def start_bot():
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
     logger.info(f"📢 Chat ID: {CHAT_ID}")
     logger.info("=" * 60)
+    logger.info("🧠 SMART ALGORITHM: Multi-Factor Analysis")
+    logger.info("   📊 Trend (60%) + 🔄 Consecutive (25%) + 🔀 Alternating (15%)")
+    logger.info("=" * 60)
     
-    # ইঞ্জিন তৈরি
     engine = PredictionEngine()
     
-    # প্রথম ডাটা ফেচ
     logger.info("📡 Fetching initial data...")
     await engine.fetch_data()
     logger.info("✅ Initial data fetched")
     
-    # সিগন্যাল অটো স্টার্ট
     is_running = True
     asyncio.create_task(signal_loop())
     
     logger.info("✅ Bot is ready and running!")
     print("\n" + "=" * 60)
     print("  ✅ MASUD AI BOT IS NOW RUNNING!")
+    print("  🧠 SMART ALGORITHM ACTIVE")
     print("  📡 Waiting for signals...")
     print("=" * 60 + "\n")
     
-    # মেইন লুপ চালু
     await main_loop()
 
 # ============================================================
