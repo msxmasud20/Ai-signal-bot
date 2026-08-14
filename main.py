@@ -5,8 +5,15 @@ import json
 import random
 import logging
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+
+# Telegram imports - সরাসরি import
+try:
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+except ImportError as e:
+    print(f"❌ Telegram import error: {e}")
+    print("📌 Please install: pip install python-telegram-bot==20.3")
+    raise
 
 # ============================================================
 # লগিং সেটআপ
@@ -31,11 +38,29 @@ if not CHAT_ID:
     logger.error("❌ CHAT_ID environment variable is not set!")
     raise ValueError("CHAT_ID is required")
 
-logger.info("=" * 50)
-logger.info("  🅼🅰🆂🆄🅳 🅰🅸 - 🅱🅾🆃")
-logger.info("=" * 50)
-logger.info(f"✅ BOT_TOKEN: {BOT_TOKEN[:10]}...")
-logger.info(f"✅ CHAT_ID: {CHAT_ID}")
+# ============================================================
+# BIG ASCII ART - MASUD
+# ============================================================
+def print_banner():
+    banner = """
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║   ███╗   ███╗ █████╗ ███████╗██╗   ██╗██████╗              ║
+║   ████╗ ████║██╔══██╗██╔════╝██║   ██║██╔══██╗             ║
+║   ██╔████╔██║███████║███████╗██║   ██║██████╔╝             ║
+║   ██║╚██╔╝██║██╔══██║╚════██║██║   ██║██╔══██╗             ║
+║   ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║             ║
+║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
+║                                                              ║
+║         🤖 MASUD AI - PREMIUM PREDICTION BOT                ║
+║         🚀 VERSION 2.0 - READY FOR ACTION                   ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+    """
+    print(banner)
+    logger.info("=" * 60)
+    logger.info("  🅼🅰🆂🆄🅳 🅰🅸 - 🅿🆁🅴🅼🅸🆄🅼 🅱🅾🆃")
+    logger.info("=" * 60)
 
 # ============================================================
 # কনফিগারেশন
@@ -144,14 +169,18 @@ class PredictionEngine:
     async def fetch_data(self):
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive'
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(API_URL, headers=headers, timeout=15) as response:
                     if response.status == 200:
                         try:
                             data = await response.json()
-                        except:
+                        except Exception as e:
+                            logger.warning(f"JSON parse error: {e}")
                             return None
                             
                         if data and data.get('data') and data['data'].get('list'):
@@ -187,7 +216,12 @@ class PredictionEngine:
                                         'history': self.last_10_numbers[:10]
                                     }
                                     return self.current_prediction
+                    else:
+                        logger.warning(f"API status: {response.status}")
                     return None
+        except asyncio.TimeoutError:
+            logger.warning("API timeout")
+            return None
         except Exception as e:
             logger.error(f"API Error: {e}")
             return None
@@ -234,8 +268,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = "🟢 চলমান" if is_running else "🔴 বন্ধ"
     
     msg = f"""
-🅼🅰🆂🆄🅳 🅰🅸 - 🆁🅸🅴🅻 🅿🆁🅴🅳🅸🅲🆃🅾🆁
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 *MASUD AI - রিয়েল প্রেডিক্টর*
+━━━━━━━━━━━━━━━━━━━━━━
 
 📊 *স্ট্যাটাস:* {status}
 🏆 *উইন:* {engine.win_count if engine else 0}
@@ -325,8 +359,8 @@ async def send_signal(bot, prediction):
     bs_emoji = "🟢" if prediction['prediction'] == "BIG" else "🔴"
     
     msg = f"""
-🅼🅰🆂🆄🅳 🅰🅸 - 🆁🅸🅴🅻 🅿🆁🅴🅳🅸🅲🆃
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 *MASUD AI - রিয়েল প্রেডিক্ট*
+━━━━━━━━━━━━━━━━━━━━━━
 
 🔢 *পিরিয়ড:* `{prediction['period'][-6:]}`
 🎯 *সিগন্যাল:* {bs_emoji} *{prediction['prediction']}*
@@ -342,7 +376,7 @@ async def send_signal(bot, prediction):
 🎯 একুরেসি: {engine.accuracy}% | 📈 ট্রেড #{engine.total_trade}
 
 ⏱️ {prediction['timestamp']}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━
 🅿🅾🆆🅴🆁🅴🅳 🅱🆈 🅼🅰🆂🆄🅳 🅰🅸
     """
     
@@ -466,7 +500,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = """
-🤖 *Masud AI Bot - সাহায্য*
+🤖 *MASUD AI Bot - সাহায্য*
 
 📌 *কমান্ডসমূহ:*
 /start - বট চালু করুন
@@ -480,7 +514,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ✅ উইন/লস ট্র্যাকার
 ✅ লাইভ স্ট্যাটাস
 
-⚡ *পাওয়ার্ড বাই Masud AI*
+⚡ *পাওয়ার্ড বাই MASUD AI*
     """
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
@@ -506,18 +540,8 @@ async def start_signal_automatically(application):
 def main():
     global engine
     
-    # বড় করে MASUD লেখা
-    print("=" * 60)
-    print("  ███╗   ███╗ █████╗ ███████╗██╗   ██╗██████╗ ")
-    print("  ████╗ ████║██╔══██╗██╔════╝██║   ██║██╔══██╗")
-    print("  ██╔████╔██║███████║███████╗██║   ██║██████╔╝")
-    print("  ██║╚██╔╝██║██╔══██║╚════██║██║   ██║██╔══██╗")
-    print("  ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║")
-    print("  ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝")
-    print("=" * 60)
-    print("  🤖 Masud AI - Premium Prediction Bot")
-    print("  🚀 Version 2.0 - Ready for Action!")
-    print("=" * 60)
+    # MASUD Banner Print
+    print_banner()
     
     logger.info("🤖 Starting Masud AI Bot...")
     logger.info(f"📡 Bot Token: {BOT_TOKEN[:10]}...")
@@ -543,10 +567,10 @@ def main():
         loop.run_until_complete(start_signal_automatically(application))
         
         logger.info("✅ Bot is ready and running!")
-        print("=" * 60)
+        print("\n" + "=" * 60)
         print("  ✅ MASUD AI BOT IS NOW RUNNING!")
         print("  📡 Waiting for signals...")
-        print("=" * 60)
+        print("=" * 60 + "\n")
         
         # বট চালু
         application.run_polling()
