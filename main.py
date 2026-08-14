@@ -44,8 +44,9 @@ def print_banner():
 ║   ██║ ╚═╝ ██║██║  ██║███████║╚██████╔╝██║  ██║             ║
 ║   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝             ║
 ║                                                              ║
-║      🤖 MASUD AI - SMART PREDICTION BOT                     ║
-║      🚀 VERSION 12.0 - PERIOD FIX + CALCULATOR             ║
+║      🤖 MASUD AI - REAL WIN/LOSS TRACKER                   ║
+║      🚀 VERSION 14.0 - REAL TIME RESULT                    ║
+║      ⏱️ Collect :30 & :00, Signal :35 & :05                ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     """
@@ -194,9 +195,11 @@ last_result = None
 total_loss = 0
 total_profit = 0
 last_api_call = 0
+consecutive_wins = 0
+consecutive_losses = 0
 
 # ============================================================
-# 🧠 স্মার্ট প্রেডিকশন ইঞ্জিন + ক্যালকুলেটর
+# 🧠 স্মার্ট প্রেডিকশন ইঞ্জিন
 # ============================================================
 class PredictionEngine:
     def __init__(self):
@@ -215,17 +218,13 @@ class PredictionEngine:
         self.consecutive_small = 0
 
     # ============================================================
-    # 🔢 ক্যালকুলেটর: লাস্ট ১০টি সংখ্যার গড়, মিডিয়ান, মোড
+    # 🔢 ক্যালকুলেটর
     # ============================================================
     def calculate_stats(self, numbers):
-        """লাস্ট ১০টি সংখ্যার পরিসংখ্যান"""
         if not numbers:
             return {'avg': 0, 'median': 0, 'mode': 0, 'big_ratio': 0}
         
-        # গড় (Average)
         avg = sum(numbers) / len(numbers)
-        
-        # মিডিয়ান (Median)
         sorted_nums = sorted(numbers)
         n = len(sorted_nums)
         if n % 2 == 0:
@@ -233,11 +232,8 @@ class PredictionEngine:
         else:
             median = sorted_nums[n//2]
         
-        # মোড (Mode)
         counter = Counter(numbers)
         mode = counter.most_common(1)[0][0] if counter else 0
-        
-        # BIG রেশিও
         big_ratio = sum(1 for n in numbers if n >= 5) / len(numbers)
         
         return {
@@ -248,10 +244,9 @@ class PredictionEngine:
         }
 
     # ============================================================
-    # 🎯 স্মার্ট অ্যালগরিদম + ক্যালকুলেটর
+    # 🎯 স্মার্ট অ্যালগরিদম
     # ============================================================
     def smart_predict(self, numbers):
-        """ক্যালকুলেটর + অ্যালগরিদম"""
         if not numbers or len(numbers) < 5:
             num = random.randint(0, 9)
             return {
@@ -261,16 +256,13 @@ class PredictionEngine:
                 'stats': self.calculate_stats(numbers)
             }
         
-        # 📊 ক্যালকুলেটর ডাটা
         stats = self.calculate_stats(numbers)
         big_ratio = stats['big_ratio'] / 100
-        avg = stats['avg']
-        mode = stats['mode']
         
-        # ১. ট্রেন্ড (৪০%)
         score_big = 0
         score_small = 0
         
+        # ফ্যাক্টর ১: ট্রেন্ড (৪০%)
         if big_ratio >= 0.55:
             score_big += 40
         elif big_ratio <= 0.45:
@@ -279,7 +271,7 @@ class PredictionEngine:
             score_big += 20
             score_small += 20
         
-        # ২. কনসিকিউটিভ (৩০%)
+        # ফ্যাক্টর ২: কনসিকিউটিভ (৩০%)
         consecutive_big = 0
         consecutive_small = 0
         for n in reversed(numbers[-5:]):
@@ -304,7 +296,7 @@ class PredictionEngine:
             score_big += 10
             score_small += 10
         
-        # ৩. অল্টারনেটিং (২০%)
+        # ফ্যাক্টর ৩: অল্টারনেটিং (২০%)
         last_5 = numbers[-5:]
         alternating = all((last_5[i] >= 5) != (last_5[i+1] >= 5) for i in range(4)) if len(last_5) >= 5 else False
         
@@ -318,15 +310,15 @@ class PredictionEngine:
             score_big += 10
             score_small += 10
         
-        # ৪. গড়/মোড বোনাস (১০%)
-        if avg >= 5.5:
+        # ফ্যাক্টর ৪: গড়/মোড বোনাস (১০%)
+        if stats['avg'] >= 5.5:
             score_small += 10
-        elif avg <= 4.5:
+        elif stats['avg'] <= 4.5:
             score_big += 10
         
-        if mode >= 5:
+        if stats['mode'] >= 5:
             score_small += 5
-        elif mode < 5:
+        elif stats['mode'] < 5:
             score_big += 5
         
         # ফাইনাল ডিসিশন
@@ -354,20 +346,10 @@ class PredictionEngine:
     # ============================================================
     # 📡 পিরিয়ড সিঙ্ক - API + ১
     # ============================================================
-    def get_current_win_go_period(self):
-        """উইংগোর বর্তমান পিরিয়ড"""
-        now = datetime.now()
-        base = datetime(2024, 1, 1, 0, 0, 0)
-        seconds_diff = int((now - base).total_seconds())
-        period_number = (seconds_diff // 30) + 1
-        base_period = 728000
-        return str(base_period + period_number)
-
     def sync_period(self, api_period):
-        """পিরিয়ড সিঙ্ক - API + ১"""
         try:
             api_int = int(api_period)
-            return str(api_int + 1)  # সবসময় +১ যোগ করব
+            return str(api_int + 1)
         except:
             return api_period
 
@@ -409,8 +391,6 @@ class PredictionEngine:
                             
                             if numbers:
                                 api_latest_issue = items[0].get('issueNumber', '')
-                                
-                                # 🔥 পিরিয়ড সিঙ্ক: API + ১
                                 use_period = self.sync_period(api_latest_issue)
                                 logger.info(f"🔄 Period sync: API {api_latest_issue} → {use_period}")
                                 
@@ -511,10 +491,10 @@ def get_admin_keyboard():
     ]
 
 # ============================================================
-# 📤 সিগন্যাল ফাংশন
+# 📤 সিগন্যাল ফাংশন - রিয়েল উইন/লস সহ
 # ============================================================
 async def send_signal(prediction, previous_result=None):
-    global engine, signal_count, total_loss, total_profit
+    global engine, signal_count, total_loss, total_profit, consecutive_wins, consecutive_losses
     
     if not prediction or not engine:
         return
@@ -524,14 +504,21 @@ async def send_signal(prediction, previous_result=None):
     
     signal_emoji = image_manager.get_image(prediction['prediction'])
     
+    # 🔥 প্রিভিয়াস রেজাল্ট
     result_text = ""
     if previous_result:
         if previous_result['result'] == 'Win':
-            result_text = f"✅ আগের: উইন 🏆"
+            result_text = f"✅ আগের ট্রেড: **উইন** 🏆"
             total_profit += 1
+            consecutive_wins += 1
+            consecutive_losses = 0
         else:
-            result_text = f"❌ আগের: লস 💔"
+            result_text = f"❌ আগের ট্রেড: **লস** 💔"
             total_loss += 1
+            consecutive_losses += 1
+            consecutive_wins = 0
+    else:
+        result_text = "⏳ প্রথম ট্রেড"
     
     # 📊 ক্যালকুলেটর ডাটা
     stats = prediction.get('stats', {})
@@ -545,6 +532,13 @@ async def send_signal(prediction, previous_result=None):
     
     scores = prediction.get('scores', {})
     scores_text = f"📊 স্কোর: BIG {scores.get('BIG', 0)} | SMALL {scores.get('SMALL', 0)}"
+    
+    # 📊 স্ট্রিক ইনফো
+    streak_text = ""
+    if consecutive_wins >= 3:
+        streak_text = f"🔥 {consecutive_wins}টি উইন স্ট্রিক!"
+    elif consecutive_losses >= 3:
+        streak_text = f"⚠️ {consecutive_losses}টি লস স্ট্রিক!"
     
     msg = f"""
 {signal_emoji} *MASUD AI - রিয়েল প্রেডিক্ট*
@@ -565,6 +559,7 @@ async def send_signal(prediction, previous_result=None):
 💎 Total Profit: {total_profit}
 🏆 Win: {engine.win_count} | 💔 Loss: {engine.loss_count}
 🎯 Accuracy: {engine.accuracy}%
+{streak_text}
 
 ⏱️ {prediction['timestamp']}
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -575,13 +570,16 @@ async def send_signal(prediction, previous_result=None):
     if (prediction['number'] >= 5 and prediction['prediction'] == 'BIG') or \
        (prediction['number'] < 5 and prediction['prediction'] == 'SMALL'):
         jackpot_emoji = image_manager.get_image('JACKPOT')
-        msg += f"\n\n{jackpot_emoji} *JACKPOT!* নাম্বার + সাইড মিলেছে! {jackpot_emoji}"
+        msg += f"\n\n{jackpot_emoji} *জ্যাকপট!* নাম্বার + সাইড মিলেছে! {jackpot_emoji}"
     
     await send_telegram_message(msg)
     logger.info(f"📤 Signal #{signal_count}: {prediction['prediction']}")
 
+# ============================================================
+# 📊 রেজাল্ট চেক - রিয়েল উইন/লস
+# ============================================================
 async def check_result(prediction, actual_number):
-    global engine, last_result, total_loss, total_profit
+    global engine, last_result, total_loss, total_profit, consecutive_wins, consecutive_losses
     
     if not prediction or actual_number is None or not engine:
         return
@@ -589,15 +587,21 @@ async def check_result(prediction, actual_number):
     actual_bs = "BIG" if actual_number >= 5 else "SMALL"
     is_win = prediction['prediction'] == actual_bs
     
+    # 🔥 রেজাল্ট আপডেট
     if is_win:
         engine.win_count += 1
-        result_text = "✅ *উইন!* 🏆"
+        result_text = "✅ **উইন!** 🏆"
         result_emoji = image_manager.get_image('WIN')
+        total_profit += 1
+        consecutive_wins += 1
+        consecutive_losses = 0
     else:
         engine.loss_count += 1
-        result_text = "❌ *লস!* 💔"
+        result_text = "❌ **লস!** 💔"
         result_emoji = image_manager.get_image('LOSS')
         total_loss += 1
+        consecutive_losses += 1
+        consecutive_wins = 0
     
     if engine.total_trade > 0:
         engine.accuracy = round((engine.win_count / engine.total_trade) * 100, 1)
@@ -611,6 +615,14 @@ async def check_result(prediction, actual_number):
     if len(engine.trade_history) > 50:
         engine.trade_history.pop(0)
     
+    # 🔥 স্ট্রিক ইনফো
+    streak_text = ""
+    if consecutive_wins >= 3:
+        streak_text = f"🔥 {consecutive_wins}টি উইন স্ট্রিক!"
+    elif consecutive_losses >= 3:
+        streak_text = f"⚠️ {consecutive_losses}টি লস স্ট্রিক!"
+    
+    # লাস্ট রেজাল্ট সেভ
     last_result = {
         'result': 'Win' if is_win else 'Loss',
         'prediction': prediction['prediction'],
@@ -618,6 +630,7 @@ async def check_result(prediction, actual_number):
         'number': actual_number
     }
     
+    # 📤 রেজাল্ট মেসেজ
     msg = f"""
 {result_emoji} *ট্রেড আপডেট*
 ━━━━━━━━━━━━━━━━━━━
@@ -626,6 +639,8 @@ async def check_result(prediction, actual_number):
 🔮 Predict: {prediction['prediction']}
 🎯 Actual: {actual_bs} (`{actual_number}`)
 📈 Result: {result_text}
+
+{streak_text}
 
 📊 *আপডেটেড স্ট্যাটস:*
 💰 Total Loss: {total_loss}
@@ -639,14 +654,15 @@ async def check_result(prediction, actual_number):
     """
     
     await send_telegram_message(msg)
+    logger.info(f"📊 Result: {result_text}")
 
 # ============================================================
-# 🔄 সিগন্যাল লুপ
+# 🔄 সিগন্যাল লুপ - নতুন টাইমিং
 # ============================================================
 async def signal_loop():
     global is_running, last_signal, last_period, engine, last_result
     
-    logger.info("🔄 Signal loop started")
+    logger.info("🔄 Signal loop started - New Timing: Collect :30 & :00, Signal :35 & :05")
     
     last_collect = -1
     last_signal_time = -1
@@ -656,14 +672,17 @@ async def signal_loop():
             now = datetime.now()
             seconds = now.second
             
-            if seconds == 25 and last_collect != 25:
-                last_collect = 25
+            # 🔥 :30 সেকেন্ডে ডাটা কালেক্ট
+            if seconds == 30 and last_collect != 30:
+                last_collect = 30
                 logger.info(f"📡 Collecting data at :{seconds}s")
                 if engine:
                     await engine.fetch_data()
             
-            elif seconds == 30 and last_signal_time != 30:
-                last_signal_time = 30
+            # 🔥 :35 সেকেন্ডে সিগন্যাল
+            elif seconds == 35 and last_signal_time != 35:
+                last_signal_time = 35
+                logger.info(f"📤 Sending signal at :{seconds}s")
                 if engine and engine.current_prediction:
                     prediction = engine.current_prediction
                     if prediction['period'] != last_period:
@@ -675,13 +694,17 @@ async def signal_loop():
                         last_signal = prediction
                         await send_signal(prediction, last_result)
             
-            elif seconds == 55 and last_collect != 55:
-                last_collect = 55
+            # 🔥 :00 সেকেন্ডে ডাটা কালেক্ট
+            elif seconds == 0 and last_collect != 0:
+                last_collect = 0
+                logger.info(f"📡 Collecting data at :{seconds}s")
                 if engine:
                     await engine.fetch_data()
             
-            elif seconds == 0 and last_signal_time != 0:
-                last_signal_time = 0
+            # 🔥 :05 সেকেন্ডে সিগন্যাল
+            elif seconds == 5 and last_signal_time != 5:
+                last_signal_time = 5
+                logger.info(f"📤 Sending signal at :{seconds}s")
                 if engine and engine.current_prediction:
                     prediction = engine.current_prediction
                     if prediction['period'] != last_period:
@@ -704,7 +727,7 @@ async def signal_loop():
             await asyncio.sleep(1)
 
 # ============================================================
-# মেসেজ হ্যান্ডলার
+# মেসেজ হ্যান্ডলার (সংক্ষিপ্ত)
 # ============================================================
 async def handle_message(message):
     global is_running, engine, admin_session
@@ -748,8 +771,10 @@ async def handle_message(message):
 💔 *লস:* {engine.loss_count if engine else 0}
 📈 *ট্রেড:* {engine.total_trade if engine else 0}
 🎯 *একুরেসি:* {engine.accuracy if engine else 0}%
+💰 Total Loss: {total_loss}
+💎 Total Profit: {total_profit}
 
-💡 নিচের বাটন ব্যবহার করুন
+⏱️ টাইমিং: :৩০ ও :০০ এ ডাটা, :৩৫ ও :০৫ এ সিগন্যাল
         """
         await send_telegram_keyboard(msg, get_start_keyboard(), chat_id)
     
@@ -769,6 +794,8 @@ async def handle_message(message):
 • 📡 স্ট্যাটাস: {'🟢 চলমান' if is_running else '🔴 বন্ধ'}
 • 💰 Total Loss: {total_loss}
 • 💎 Total Profit: {total_profit}
+• 🔥 উইন স্ট্রিক: {consecutive_wins}
+• ⚠️ লস স্ট্রিক: {consecutive_losses}
 
 📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers)}
         """
@@ -785,17 +812,22 @@ async def handle_message(message):
 /help - সাহায্য
 /admin - এডমিন প্যানেল
 
-📊 *টাইমিং:*
-• :২৫ ও :৫৫ এ ডাটা কালেক্ট
-• :৩০ ও :০০ এ সিগন্যাল
+⏱️ *টাইমিং:*
+• :৩০ সেকেন্ডে ডাটা কালেক্ট
+• :৩৫ সেকেন্ডে সিগন্যাল
+• :০০ সেকেন্ডে ডাটা কালেক্ট
+• :০৫ সেকেন্ডে সিগন্যাল
+• প্রতি মিনিটে ২ বার
 
-🧮 *ক্যালকুলেটর:*
-• গড়, মিডিয়ান, মোড বিশ্লেষণ
+📊 *রিয়েল উইন/লস:*
+• প্রতিটি সিগন্যালের রেজাল্ট দেখায়
+• টোটাল লস/প্রফিট ট্র্যাক করে
+• স্ট্রিক কাউন্ট দেখায়
         """
         await send_telegram_message(help_text, chat_id)
 
 # ============================================================
-# Callback হ্যান্ডলার
+# Callback হ্যান্ডলার (সংক্ষিপ্ত)
 # ============================================================
 async def handle_callback(callback):
     global is_running, engine, admin_session, image_manager
@@ -839,6 +871,8 @@ async def handle_callback(callback):
 • লস: {engine.loss_count if engine else 0}
 • একুরেসি: {engine.accuracy if engine else 0}%
 • স্ট্যাটাস: {'🟢 চলমান' if is_running else '🔴 বন্ধ'}
+• Total Loss: {total_loss}
+• Total Profit: {total_profit}
 
 🖼️ ইমেজ: BIG {image_manager.get_image('BIG')} | SMALL {image_manager.get_image('SMALL')}
         """
@@ -871,7 +905,7 @@ async def handle_callback(callback):
             is_running = True
             asyncio.create_task(signal_loop())
             await answer_callback(callback_id, "✅ সিগন্যাল চালু হয়েছে!")
-            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে!")
+            await edit_message_text(chat_id, message_id, "✅ সিগন্যাল চালু হয়েছে!\n⏱️ :৩০ ও :০০ এ ডাটা, :৩৫ ও :০৫ এ সিগন্যাল")
         else:
             await answer_callback(callback_id, "⚠️ সিগন্যাল ইতিমধ্যে চালু আছে!")
     
@@ -895,6 +929,8 @@ async def handle_callback(callback):
 • 🎯 একুরেসি: {engine.accuracy}%
 • 💰 Total Loss: {total_loss}
 • 💎 Total Profit: {total_profit}
+• 🔥 উইন স্ট্রিক: {consecutive_wins}
+• ⚠️ লস স্ট্রিক: {consecutive_losses}
 
 📌 *লাস্ট ১০:* {get_history_dots(engine.last_10_numbers)}
         """
@@ -1029,7 +1065,8 @@ async def start_bot():
     logger.info("🔐 ADMIN PANEL: /admin")
     logger.info("🔑 PASSWORD: msxmasud20")
     logger.info("🔄 PERIOD SYNC: API + 1")
-    logger.info("🧮 CALCULATOR: Avg, Median, Mode")
+    logger.info("📊 REAL WIN/LOSS TRACKING ACTIVE")
+    logger.info("⏱️ Collect :30 & :00, Signal :35 & :05")
     logger.info("=" * 60)
     
     image_manager = ImageManager()
@@ -1047,6 +1084,7 @@ async def start_bot():
     print("  ✅ MASUD AI BOT IS NOW RUNNING!")
     print("  🔐 ADMIN PANEL: /admin")
     print("  🔑 PASSWORD: msxmasud20")
+    print("  ⏱️ Collect :30 & :00, Signal :35 & :05")
     print("  📡 Waiting for signals...")
     print("=" * 60 + "\n")
     
