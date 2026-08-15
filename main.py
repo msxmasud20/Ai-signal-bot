@@ -60,7 +60,7 @@ admin_session = {}
 # ============================================================
 # 📝 ফিডব্যাক কনফিগারেশন
 # ============================================================
-FEEDBACK_ID = "@MASUD_SHEIKH_ADMIN"
+FEEDBACK_ID = "@msxmasud10920"
 feedback_config = {
     'id': FEEDBACK_ID,
     'text': f"📢 ফিডব্যাক: {FEEDBACK_ID}"
@@ -1125,7 +1125,7 @@ async def send_signal(prediction, previous_result=None):
 • 𝐕𝐨𝐥𝐚𝐭𝐢𝐥𝐢𝐭𝐲: {prediction.get('volatility', 0)}/10
 
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
     """
     
     # জ্যাকপট চেক
@@ -1227,7 +1227,7 @@ async def check_result(prediction, actual_number):
 💰 𝐏𝐫𝐨𝐟𝐢𝐭: {total_profit}
 💸 𝐋𝐨𝐬𝐬: {total_loss}
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
     """
     
     if result_image:
@@ -1503,7 +1503,7 @@ async def handle_message(message):
 {channel_info}
 ⏱️ *𝐓𝐢𝐦𝐢𝐧𝐠:* :30 & :00 Collect, :35 & :05 Signal
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
         """
         await send_telegram_keyboard(msg, get_premium_keyboard(), chat_id)
     
@@ -1530,7 +1530,7 @@ async def handle_message(message):
 
 📌 *Last 10:* {get_history_dots(engine.last_10_numbers)}
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
         """
         await send_telegram_message(stats, chat_id)
     
@@ -1569,7 +1569,7 @@ async def handle_message(message):
 • Dual Channel/Group
 • Editable Feedback
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
         """
         await send_telegram_message(help_text, chat_id)
 
@@ -1653,7 +1653,7 @@ async def handle_callback(callback):
 📢 Primary: {primary_channel}
 📢 Secondary: {secondary_channel if secondary_channel else 'None'}
 📡 Send to Both: {'✅' if send_to_both else '❌'}
-📝 Feedback: {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📝 Feedback: {feedback_config.get('id', '@msxmasud10920')}
 
 🖼️ Images: BIG, SMALL, WIN, LOSS, JACKPOT
 ━━━━━━━━━━━━━━━━━━━━━
@@ -1735,7 +1735,7 @@ async def handle_callback(callback):
 
 📌 Last 10: {get_history_dots(engine.last_10_numbers)}
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
         """
         await edit_message_text(chat_id, message_id, stats)
         await answer_callback(callback_id, "📊 Showing stats")
@@ -1757,7 +1757,7 @@ async def handle_callback(callback):
 {market_emoji} Market: {p.get('market_phase', 'NEUTRAL')}
 ⏱️ {p['timestamp']}
 ━━━━━━━━━━━━━━━━━━━━━
-📢 {feedback_config.get('id', '@MASUD_SHEIKH_ADMIN')}
+📢 {feedback_config.get('id', '@msxmasud10920')}
             """
             await edit_message_text(chat_id, message_id, signal)
             await answer_callback(callback_id, "📡 Showing live signal")
